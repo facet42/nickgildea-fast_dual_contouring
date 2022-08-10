@@ -16,6 +16,9 @@
 
 #include "fast_dc.h"
 
+#undef min
+#undef max
+
 // ----------------------------------------------------------------------------
 
 void HandleMouseMove(const SDL_MouseMotionEvent& e, float& rotateXAxis, float& rotateYAxis)
@@ -25,8 +28,13 @@ void HandleMouseMove(const SDL_MouseMotionEvent& e, float& rotateXAxis, float& r
 		rotateXAxis += (float)e.yrel * 0.5f;
 		rotateYAxis += (float)e.xrel * 0.5f;
 
-		rotateXAxis = glm::min(80.f, rotateXAxis);
-		rotateXAxis = glm::max(-80.f, rotateXAxis);
+		rotateXAxis = glm::min(1.f, rotateXAxis);
+		rotateXAxis = glm::max(-1.f, rotateXAxis);
+
+		rotateYAxis = glm::min(1.f, rotateYAxis);
+		rotateYAxis = glm::max(-1.f, rotateYAxis);
+
+		printf("%d,%d %f,%f\n", e.xrel, e.yrel, rotateXAxis, rotateYAxis);
 	}
 }
 
@@ -168,7 +176,7 @@ void DrawFrame(
 
 	glUseProgram(program.getId());
 
-	int offset = -1 * (meshes.size() / 2);
+	size_t offset = -1 * (meshes.size() / 2);
 	for (int i = 0; i < meshes.size(); i++)
 	{
 		const Mesh& mesh = meshes[i];

@@ -250,7 +250,7 @@ static int FindValidCollapses(
 	std::mt19937 prng;
 	prng.seed(42);
 
-	const int numRandomEdges = edges.size() * options.edgeFraction;
+	const int numRandomEdges = (int)(edges.size() * options.edgeFraction);
 	std::uniform_int_distribution<int> distribution(0, (int)(edges.size() - 1));
 
 	LinearBuffer<int> randomEdges(numRandomEdges);
@@ -545,7 +545,7 @@ void ngMeshSimplifier(
 		}
 	}
 
-	const int targetTriangleCount = triangles.size() * options.targetPercentage;
+	const int targetTriangleCount = (int)(triangles.size() * options.targetPercentage);
 
 	int iterations = 0;
 	while (triangles.size() > targetTriangleCount &&
