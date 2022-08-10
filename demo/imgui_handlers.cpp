@@ -12,6 +12,7 @@ static int          g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
 static int          g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;
 static int          g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_AttribLocationColor = 0;
 static unsigned int g_VboHandle = 0, g_VaoHandle = 0, g_ElementsHandle = 0;
+static ImGuiContext* context = nullptr;
 
 void ImGui_ImplSdl_RenderDrawLists(ImDrawData* draw_data)
 {
@@ -88,12 +89,12 @@ void ImGui_ImplSdl_RenderDrawLists(ImDrawData* draw_data)
 	glDisable(GL_BLEND);
 }
 
-static const char* ImGui_ImplSdl_GetClipboardText()
+static const char* ImGui_ImplSdl_GetClipboardText(void* user_data)
 {
 	return SDL_GetClipboardText();
 }
 
-static void ImGui_ImplSdl_SetClipboardText(const char* text)
+static void ImGui_ImplSdl_SetClipboardText(void* user_data, const char* text)
 {
     SDL_SetClipboardText(text);
 }
@@ -248,6 +249,7 @@ void    ImGui_ImplSdl_InvalidateDeviceObjects()
 
 bool    ImGui_ImplSdl_Init(SDL_Window *window)
 {
+    context = ImGui::CreateContext((ImFontAtlas*)nullptr);
     ImGuiIO& io = ImGui::GetIO();
     io.KeyMap[ImGuiKey_Tab] = SDLK_TAB;                     // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
     io.KeyMap[ImGuiKey_LeftArrow] = SDL_SCANCODE_LEFT;
@@ -269,7 +271,7 @@ bool    ImGui_ImplSdl_Init(SDL_Window *window)
     io.KeyMap[ImGuiKey_Y] = SDLK_y;
     io.KeyMap[ImGuiKey_Z] = SDLK_z;
 	
-    io.RenderDrawListsFn = ImGui_ImplSdl_RenderDrawLists;   // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
+    //io.RenderDrawListsFn = ImGui_ImplSdl_RenderDrawLists;   // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
     io.SetClipboardTextFn = ImGui_ImplSdl_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSdl_GetClipboardText;
 	
@@ -277,7 +279,7 @@ bool    ImGui_ImplSdl_Init(SDL_Window *window)
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
-    io.ImeWindowHandle = wmInfo.info.win.window;
+    ImGui::GetMainViewport()->PlatformHandleRaw = wmInfo.info.win.window;
 #endif
 
     return true;
@@ -286,7 +288,7 @@ bool    ImGui_ImplSdl_Init(SDL_Window *window)
 void ImGui_ImplSdl_Shutdown()
 {
     ImGui_ImplSdl_InvalidateDeviceObjects();
-    ImGui::Shutdown();
+    ImGui::DestroyContext(context);
 }
 
 void ImGui_ImplSdl_NewFrame(SDL_Window *window)

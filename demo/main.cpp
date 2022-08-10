@@ -88,8 +88,8 @@ bool GUI_DrawFrame(
 		{
 			ImGui::SliderFloat("Random Edge Fraction", &options.edgeFraction, 0.f, 1.f);
 			ImGui::SliderInt("Max Iterations", &options.maxIterations, 1, 100);
-			ImGui::SliderFloat("Target Triangle Percentage", &options.targetPercentage, 0.f, 1.f, "%.3f", 1.5f);
-			ImGui::SliderFloat("Max QEF Error", &options.maxError, 0.f, 10.f, "%.3f", 1.5f);
+			ImGui::SliderFloat("Target Triangle Percentage", &options.targetPercentage, 0.f, 1.f, "%.3f", ImGuiSliderFlags_Logarithmic/* 1.5f*/);
+			ImGui::SliderFloat("Max QEF Error", &options.maxError, 0.f, 10.f, "%.3f", ImGuiSliderFlags_Logarithmic/*1.5f*/);
 			ImGui::SliderFloat("Max Edge Size", &options.maxEdgeSize, 0.f, 10.f);
 			ImGui::SliderFloat("Min Angle Cosine", &options.minAngleCosine, 0.f, 1.f);
 		}
@@ -131,7 +131,7 @@ bool GUI_DrawFrame(
 
 		if (ImGui::CollapsingHeader("Viewer Options"))
 		{
-			ImGui::SliderFloat("Mesh Scale", &viewerOpts.meshScale, 1.f, 5.f, "%.3f", 1.2f);
+			ImGui::SliderFloat("Mesh Scale", &viewerOpts.meshScale, 1.f, 5.f, "%.3f", ImGuiSliderFlags_Logarithmic/*1.2f*/);
 			if (ImGui::RadioButton("Draw Wireframe", viewerOpts.drawWireframe))
 			{
 				viewerOpts.drawWireframe = !viewerOpts.drawWireframe;
@@ -150,6 +150,9 @@ bool GUI_DrawFrame(
 	ImGuiIO& io = ImGui::GetIO();
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 	ImGui::Render();
+
+	ImDrawData* draw_data = ImGui::GetDrawData();
+	ImGui_ImplSdl_RenderDrawLists(draw_data);
 
 	return io.WantCaptureMouse || io.WantCaptureKeyboard;	
 }
