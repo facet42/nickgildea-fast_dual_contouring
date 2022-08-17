@@ -4,6 +4,8 @@
 #include <GL\glew.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm\glm.hpp>
 
 #include "glsl_program.h"
