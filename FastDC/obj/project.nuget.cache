@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "dgSpecHash": "MoveJV0Gt8RUTkj/gX5dK4VxojVrKxF7KJBfNbYffxGRTb/iqbukXUM1WF084guTDtgUBvbKaFlA/fCZxbZ2wA==",
+  "success": true,
+  "projectFilePath": "W:\\github\\nickgildea-fast_dual_contouring\\FastDC\\FastDC.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Robert\\.nuget\\packages\\glmsharp\\0.9.8\\glmsharp.0.9.8.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\imgui.net\\1.87.3\\imgui.net.1.87.3.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk\\5.0.0-pre.7\\opentk.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.compute\\5.0.0-pre.7\\opentk.compute.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.core\\5.0.0-pre.7\\opentk.core.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.graphics\\5.0.0-pre.7\\opentk.graphics.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.input\\5.0.0-pre.7\\opentk.input.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.mathematics\\5.0.0-pre.7\\opentk.mathematics.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.openal\\5.0.0-pre.7\\opentk.openal.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.redist.glfw\\3.3.0-pre20200830200122\\opentk.redist.glfw.3.3.0-pre20200830200122.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.windowing.common\\5.0.0-pre.7\\opentk.windowing.common.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.windowing.desktop\\5.0.0-pre.7\\opentk.windowing.desktop.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\opentk.windowing.graphicslibraryframework\\5.0.0-pre.7\\opentk.windowing.graphicslibraryframework.5.0.0-pre.7.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\system.buffers\\4.4.0\\system.buffers.4.4.0.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\system.numerics.vectors\\4.4.0\\system.numerics.vectors.4.4.0.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.4.0\\system.runtime.compilerservices.unsafe.4.4.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'GlmSharp 0.9.8' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net6.0'. This package may not be fully compatible with your project.",
+      "libraryId": "GlmSharp",
+      "targetGraphs": [
+        "net6.0"
+      ]
+    }
+  ]
+}
