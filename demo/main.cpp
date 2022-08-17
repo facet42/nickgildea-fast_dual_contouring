@@ -4,6 +4,8 @@
 #include <GL\glew.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm\glm.hpp>
 
 #include "glsl_program.h"
@@ -16,6 +18,9 @@
 
 #include "fast_dc.h"
 
+#undef min
+#undef max
+
 // ----------------------------------------------------------------------------
 
 void HandleMouseMove(const SDL_MouseMotionEvent& e, float& rotateXAxis, float& rotateYAxis)
@@ -25,8 +30,13 @@ void HandleMouseMove(const SDL_MouseMotionEvent& e, float& rotateXAxis, float& r
 		rotateXAxis += (float)e.yrel * 0.5f;
 		rotateYAxis += (float)e.xrel * 0.5f;
 
-		rotateXAxis = glm::min(80.f, rotateXAxis);
-		rotateXAxis = glm::max(-80.f, rotateXAxis);
+		rotateXAxis = glm::min(1.f, rotateXAxis);
+		rotateXAxis = glm::max(-1.f, rotateXAxis);
+
+		rotateYAxis = glm::min(1.f, rotateYAxis);
+		rotateYAxis = glm::max(-1.f, rotateYAxis);
+
+		printf("%d,%d %f,%f\n", e.xrel, e.yrel, rotateXAxis, rotateYAxis);
 	}
 }
 
@@ -80,8 +90,8 @@ bool GUI_DrawFrame(
 		{
 			ImGui::SliderFloat("Random Edge Fraction", &options.edgeFraction, 0.f, 1.f);
 			ImGui::SliderInt("Max Iterations", &options.maxIterations, 1, 100);
-			ImGui::SliderFloat("Target Triangle Percentage", &options.targetPercentage, 0.f, 1.f, "%.3f", 1.5f);
-			ImGui::SliderFloat("Max QEF Error", &options.maxError, 0.f, 10.f, "%.3f", 1.5f);
+			ImGui::SliderFloat("Target Triangle Percentage", &options.targetPercentage, 0.f, 1.f, "%.3f", ImGuiSliderFlags_Logarithmic/* 1.5f*/);
+			ImGui::SliderFloat("Max QEF Error", &options.maxError, 0.f, 10.f, "%.3f", ImGuiSliderFlags_Logarithmic/*1.5f*/);
 			ImGui::SliderFloat("Max Edge Size", &options.maxEdgeSize, 0.f, 10.f);
 			ImGui::SliderFloat("Min Angle Cosine", &options.minAngleCosine, 0.f, 1.f);
 		}
@@ -123,7 +133,7 @@ bool GUI_DrawFrame(
 
 		if (ImGui::CollapsingHeader("Viewer Options"))
 		{
-			ImGui::SliderFloat("Mesh Scale", &viewerOpts.meshScale, 1.f, 5.f, "%.3f", 1.2f);
+			ImGui::SliderFloat("Mesh Scale", &viewerOpts.meshScale, 1.f, 5.f, "%.3f", ImGuiSliderFlags_Logarithmic/*1.2f*/);
 			if (ImGui::RadioButton("Draw Wireframe", viewerOpts.drawWireframe))
 			{
 				viewerOpts.drawWireframe = !viewerOpts.drawWireframe;
@@ -142,6 +152,9 @@ bool GUI_DrawFrame(
 	ImGuiIO& io = ImGui::GetIO();
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 	ImGui::Render();
+
+	ImDrawData* draw_data = ImGui::GetDrawData();
+	ImGui_ImplSdl_RenderDrawLists(draw_data);
 
 	return io.WantCaptureMouse || io.WantCaptureKeyboard;	
 }
@@ -168,7 +181,7 @@ void DrawFrame(
 
 	glUseProgram(program.getId());
 
-	int offset = -1 * (meshes.size() / 2);
+	size_t offset = -1 * (meshes.size() / 2);
 	for (int i = 0; i < meshes.size(); i++)
 	{
 		const Mesh& mesh = meshes[i];
