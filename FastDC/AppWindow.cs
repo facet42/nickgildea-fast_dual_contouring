@@ -1,6 +1,7 @@
 ﻿namespace FastDC
 {
     using System;
+    using System.ComponentModel;
 
     using ImGuiNET;
 
@@ -11,7 +12,12 @@
 
     internal class AppWindow : GameWindow
     {
-        ImGuiController controller;
+        public event EventHandler? Render;
+        public event EventHandler? RenderUserInterface;
+
+        public event EventHandler<CancelEventArgs>? Exit;
+
+        ImGuiController? controller;
 
         public AppWindow(int width, int height)
             : base(
@@ -39,21 +45,22 @@
 
             GL.Viewport(0, 0, this.ClientSize.X, this.ClientSize.Y);
 
-            this.controller.WindowResized(this.ClientSize.X, this.ClientSize.Y);
+            this.controller?.WindowResized(this.ClientSize.X, this.ClientSize.Y);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             base.OnRenderFrame(e);
 
-            this.controller.Update(this, e.Time);
+            this.controller?.Update(this, e.Time);
 
             GL.ClearColor(0, 32, 48, 255);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
-            ImGui.ShowDemoWindow();
+            this.Render?.Invoke(this, new EventArgs());
+            this.RenderUserInterface?.Invoke(this, new EventArgs());
 
-            this.controller.Render();
+            this.controller?.Render();
 
             this.SwapBuffers();
         }
@@ -62,7 +69,7 @@
         {
             base.OnTextInput(e);
 
-            this.controller.PressChar((char)e.Unicode);
+            this.controller?.PressChar((char)e.Unicode);
         }
 
         protected override void OnMouseWheel(MouseWheelEventArgs e)
@@ -70,6 +77,13 @@
             base.OnMouseWheel(e);
 
             ImGuiController.MouseScroll(e.Offset);
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            base.OnClosing(e);
+
+            this.Exit?.Invoke(this, e);
         }
     }
 }

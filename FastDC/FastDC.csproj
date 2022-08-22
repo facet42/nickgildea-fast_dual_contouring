@@ -7,9 +7,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="shader.frag" />
+    <None Remove="shader.vert" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="GlmSharp" Version="0.9.8" />
     <PackageReference Include="ImGui.NET" Version="1.87.3" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="OpenTK" Version="5.0.0-pre.7" />
   </ItemGroup>
 

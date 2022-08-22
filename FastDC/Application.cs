@@ -5,13 +5,17 @@
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using ImGuiNET;
 
+    using OpenTK.Graphics;
     using OpenTK.Graphics.OpenGL;
     using OpenTK.Windowing.Desktop;
 
     internal class Application
     {
-        private AppWindow window;
+        private AppWindow? window;
+
+        FastDC fastDC = new FastDC();
 
         public int Run(int width, int height)
         {
@@ -22,47 +26,32 @@
 
             this.window?.Run();
 
-            Shutdown();
-
             return 0;
         }
 
         private bool Initialise(int width, int height)
         {
             this.window = new AppWindow(width, height);
+            this.window.Render += Render;
+            this.window.RenderUserInterface += RenderUserInterface;
+            this.window.Exit += Exit;
 
-            //ReportError(SDL_GL_SetAttribute(SDL_GLattr.SDL_GL_CONTEXT_MAJOR_VERSION, 3));
-            //ReportError(SDL_GL_SetAttribute(SDL_GLattr.SDL_GL_CONTEXT_MINOR_VERSION, 3));
-            //ReportError(SDL_GL_SetAttribute(SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_CORE));
-            //ReportError(SDL_GL_SetAttribute(SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1));
-
-            //this.context = SDL_GL_CreateContext(window);
-            //if (this.context == IntPtr.Zero)
-            //{
-            //    return false;
-            //}
-
-            //ReportError(SDL_GL_MakeCurrent(this.window, this.context));
-
-            //GL.Viewport(0, 0, width, height);
-
-            return true;
+            return this.fastDC.Initialise();
         }
 
-        private void Shutdown()
+        private void Render(object? sender, EventArgs e)
         {
-            //SDL_DestroyWindow(this.window);
-            //SDL_Quit();
+            this.fastDC.Render();
         }
 
-        private static void ReportError(int error)
+        private void RenderUserInterface(object? sender, EventArgs e)
         {
-            //if (error >= 0)
-            //{
-            //    return;
-            //}
+            this.fastDC.RenderUserInterface();
+        }
 
-            //Console.WriteLine(SDL_GetError());
+        private void Exit(object? sender, EventArgs e)
+        {
+            this.fastDC.Dispose();
         }
     }
 }

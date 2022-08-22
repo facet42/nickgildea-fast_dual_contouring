@@ -68,3 +68,4 @@ W:\github\nickgildea-fast_dual_contouring\FastDC\obj\Debug\net6.0\refint\FastDC.
 W:\github\nickgildea-fast_dual_contouring\FastDC\obj\Debug\net6.0\FastDC.pdb
 W:\github\nickgildea-fast_dual_contouring\FastDC\obj\Debug\net6.0\FastDC.genruntimeconfig.cache
 W:\github\nickgildea-fast_dual_contouring\FastDC\obj\Debug\net6.0\ref\FastDC.dll
+W:\github\nickgildea-fast_dual_contouring\FastDC\bin\Debug\net6.0\MathNet.Numerics.dll

@@ -26,7 +26,7 @@
         private int shaderProjectionMatrixLoc;
         private int shaderFontTextureLoc;
         private TextureHandle fontTexture;
-        private System.Numerics.Vector2 scaleFactor = new System.Numerics.Vector2(1f, 1f);
+        private System.Numerics.Vector2 scaleFactor = new(1f, 1f);
 
         readonly List<char> PressedChars = new();
 
@@ -100,7 +100,7 @@
                     outputColor = color * texture(in_fontTexture, texCoord);
                 }";
 
-            this.shader = CreateProgram("ImGui", VertexSource, FragmentSource);
+            this.shader = Graphics.CreateProgram("ImGui", VertexSource, FragmentSource);
             this.shaderProjectionMatrixLoc = GL.GetUniformLocation(this.shader, "projection_matrix");
             this.shaderFontTextureLoc = GL.GetUniformLocation(this.shader, "in_fontTexture");
 
@@ -446,53 +446,6 @@
         {
             this.windowWidth = width;
             this.windowHeight = height;
-        }
-
-        private static ProgramHandle CreateProgram(string name, string vertexSource, string fragmentSource)
-        {
-            var program = GL.CreateProgram();
-
-            var vertex = CompileShader(name, ShaderType.VertexShader, vertexSource);
-            var fragment = CompileShader(name, ShaderType.FragmentShader, fragmentSource);
-
-            GL.AttachShader(program, vertex);
-            GL.AttachShader(program, fragment);
-
-            GL.LinkProgram(program);
-
-            int success = 0;
-            GL.GetProgrami(program, ProgramPropertyARB.LinkStatus, ref success);
-            //if (success == 0)
-            {
-                GL.GetProgramInfoLog(program, out var info);
-                Debug.WriteLine($"GL.LinkProgram had info log [{name}]:\n{info}");
-            }
-
-            GL.DetachShader(program, vertex);
-            GL.DetachShader(program, fragment);
-
-            GL.DeleteShader(vertex);
-            GL.DeleteShader(fragment);
-
-            return program;
-        }
-
-        private static ShaderHandle CompileShader(string name, ShaderType shaderType, string source)
-        {
-            var shader = GL.CreateShader(shaderType);
-
-            GL.ShaderSource(shader, source);
-            GL.CompileShader(shader);
-
-            int success = 0;
-            GL.GetShaderi(shader, ShaderParameterName.CompileStatus, ref success);
-            //if (success == 0)
-            {
-                GL.GetShaderInfoLog(shader, out var info);
-                Console.WriteLine($"GL.CompileShader for shader '{name}' [{shaderType}] had info log:\n{info}");
-            }
-
-            return shader;
         }
 
         public void DestroyDeviceObjects()

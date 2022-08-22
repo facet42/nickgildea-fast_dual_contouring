@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "MoveJV0Gt8RUTkj/gX5dK4VxojVrKxF7KJBfNbYffxGRTb/iqbukXUM1WF084guTDtgUBvbKaFlA/fCZxbZ2wA==",
+  "dgSpecHash": "xma0XR10zkVvjiNUQsKSOqPCBKRgRpo52kbYOJZlZlhymr8qY02Mgr42vACcNG3sh+Cz8RLK5VbsxWdbvF4mZQ==",
   "success": true,
   "projectFilePath": "W:\\github\\nickgildea-fast_dual_contouring\\FastDC\\FastDC.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Robert\\.nuget\\packages\\glmsharp\\0.9.8\\glmsharp.0.9.8.nupkg.sha512",
     "C:\\Users\\Robert\\.nuget\\packages\\imgui.net\\1.87.3\\imgui.net.1.87.3.nupkg.sha512",
+    "C:\\Users\\Robert\\.nuget\\packages\\mathnet.numerics\\5.0.0\\mathnet.numerics.5.0.0.nupkg.sha512",
     "C:\\Users\\Robert\\.nuget\\packages\\opentk\\5.0.0-pre.7\\opentk.5.0.0-pre.7.nupkg.sha512",
     "C:\\Users\\Robert\\.nuget\\packages\\opentk.compute\\5.0.0-pre.7\\opentk.compute.5.0.0-pre.7.nupkg.sha512",
     "C:\\Users\\Robert\\.nuget\\packages\\opentk.core\\5.0.0-pre.7\\opentk.core.5.0.0-pre.7.nupkg.sha512",
