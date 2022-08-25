@@ -12,6 +12,7 @@
 
     internal class AppWindow : GameWindow
     {
+        public event EventHandler<double>? Update;
         public event EventHandler? Render;
         public event EventHandler? RenderUserInterface;
 
@@ -46,6 +47,13 @@
             GL.Viewport(0, 0, this.ClientSize.X, this.ClientSize.Y);
 
             this.controller?.WindowResized(this.ClientSize.X, this.ClientSize.Y);
+        }
+
+        protected override void OnUpdateFrame(FrameEventArgs e)
+        {
+            base.OnUpdateFrame(e);
+
+            this.Update?.Invoke(this, e.Time);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)

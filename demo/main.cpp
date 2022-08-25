@@ -85,7 +85,7 @@ bool GUI_DrawFrame(
 
 	{
 		ImGui::Begin("Options");
-		
+
 		if (ImGui::CollapsingHeader("Mesh Simplification Options"))
 		{
 			ImGui::SliderFloat("Random Edge Fraction", &options.edgeFraction, 0.f, 1.f);
@@ -176,7 +176,7 @@ void DrawFrame(
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	glm::mat4 projection = glm::perspective(60.f, 16.f/9.f, 0.1f, 500.f);
+	glm::mat4 projection = glm::perspective(80.f, 16.f/9.f, 0.1f, 500.f);
 	glm::mat4 modelview = glm::lookAt(pos + fwd, glm::vec3(0.f), glm::vec3(0.f, 1.f, 0.f));
 
 	glUseProgram(program.getId());

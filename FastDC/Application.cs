@@ -32,11 +32,17 @@
         private bool Initialise(int width, int height)
         {
             this.window = new AppWindow(width, height);
+            this.window.Update += Update;
             this.window.Render += Render;
             this.window.RenderUserInterface += RenderUserInterface;
             this.window.Exit += Exit;
 
             return this.fastDC.Initialise();
+        }
+
+        private void Update(object? sender, double time)
+        {
+            this.fastDC.Update(time);
         }
 
         private void Render(object? sender, EventArgs e)
