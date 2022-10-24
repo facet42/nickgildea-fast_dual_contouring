@@ -90,4 +90,7 @@
     <None Include="shader.frag" />
     <None Include="shader.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="fastdc_orig.log" />
+  </ItemGroup>
 </Project>

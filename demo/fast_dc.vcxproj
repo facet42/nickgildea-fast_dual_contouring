@@ -181,6 +181,9 @@
     <None Include="shader.frag" />
     <None Include="shader.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="fastdc_orig.log" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

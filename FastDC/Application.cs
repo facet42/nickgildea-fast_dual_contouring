@@ -11,7 +11,7 @@
     using OpenTK.Graphics.OpenGL;
     using OpenTK.Windowing.Desktop;
 
-    internal class Application
+    internal class Application : IDisposable
     {
         private AppWindow? window;
 
@@ -21,10 +21,13 @@
         {
             if (Initialise(width, height) == false)
             {
+                this.Dispose();
                 return -1;
             }
 
             this.window?.Run();
+
+            this.Dispose();
 
             return 0;
         }
@@ -56,6 +59,11 @@
         }
 
         private void Exit(object? sender, EventArgs e)
+        {
+            this.fastDC.Dispose();
+        }
+
+        public void Dispose()
         {
             this.fastDC.Dispose();
         }

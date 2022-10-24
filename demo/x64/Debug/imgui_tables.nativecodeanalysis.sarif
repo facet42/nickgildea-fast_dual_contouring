@@ -1,0 +1,67 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.34.31721.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imgui_tables.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "250d91374f404ccccfce63f1b705ca887cab173ca42d0de1ad2b623d3daf09fb"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imgui.h"
+          },
+          "hashes": {
+            "sha-256": "81f4ccee8d3f8bef421757c915a79a9d9e1373699eecf78b704688ccc07ef2fe"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imconfig.h"
+          },
+          "hashes": {
+            "sha-256": "879de4ccbbe45226a4e952814dbef2325892dfc6f801d4dfc0501fd6a706e96a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imgui_internal.h"
+          },
+          "hashes": {
+            "sha-256": "ac3fa2952de18ec22df9b96fe7657540b3c52ac53205325433d634559ca7b211"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imstb_textedit.h"
+          },
+          "hashes": {
+            "sha-256": "952dafd13b3bdfceb7179da7f7d11db14419e7ae3613982741428b7a036b5d27"
+          }
+        }
+      ]
+    }
+  ]
+}

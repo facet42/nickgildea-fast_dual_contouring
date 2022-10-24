@@ -1,0 +1,2 @@
+W:\github\fast_dual_contouring\demo\x64\Release\fast_dc.exe
+W:\github\nickgildea-fast_dual_contouring\demo\x64\Release\fast_dc.exe

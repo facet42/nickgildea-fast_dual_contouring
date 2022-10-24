@@ -1,0 +1,44 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32728.150
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FastDualContouring", "FastDualContouring.vcxproj", "{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}"
+	ProjectSection(ProjectDependencies) = postProject
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4} = {23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGUI", "..\imgui-1.88\ImGUI\ImGUI.vcxproj", "{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Debug|x64.ActiveCfg = Debug|x64
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Debug|x64.Build.0 = Debug|x64
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Debug|x86.ActiveCfg = Debug|Win32
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Debug|x86.Build.0 = Debug|Win32
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Release|x64.ActiveCfg = Release|x64
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Release|x64.Build.0 = Release|x64
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Release|x86.ActiveCfg = Release|Win32
+		{DA1304A6-3A0A-4E40-9F65-0A6CA581D510}.Release|x86.Build.0 = Release|Win32
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Debug|x64.ActiveCfg = Debug|x64
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Debug|x64.Build.0 = Debug|x64
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Debug|x86.ActiveCfg = Debug|Win32
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Debug|x86.Build.0 = Debug|Win32
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Release|x64.ActiveCfg = Release|x64
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Release|x64.Build.0 = Release|x64
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Release|x86.ActiveCfg = Release|Win32
+		{23F9A407-008B-4C11-A0C2-C8FF2ED56BA4}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AEBF2FB8-E496-4A81-B9A8-1B0AFE35A4E7}
+	EndGlobalSection
+EndGlobal

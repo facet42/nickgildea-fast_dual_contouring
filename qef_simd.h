@@ -42,6 +42,11 @@
 #include	<xmmintrin.h>
 #include	<immintrin.h>
 
+#include <fstream>
+extern std::fstream logFile;
+
+extern std::string ToString(__m128 value);
+
 const int QEF_MAX_INPUT_COUNT = 12;
 
 // Ideally the data would already be in SSE registers & returned in a SEE register
@@ -208,12 +213,21 @@ static void givens_coeffs_sym(__m128& c_result, __m128& s_result, const Mat4x4& 
 	__m128 s_true = _mm_and_ps(pq_cmp, zeros);
 	__m128 s_false = _mm_andnot_ps(pq_cmp, s);
 	s_result = _mm_or_ps(s_true, s_false);
+
+	logFile << "c_result:" << c_result.m128_f32[0] << "," << c_result.m128_f32[1] << "," << c_result.m128_f32[2] << "," << c_result.m128_f32[3] << std::endl;
+	logFile << "s_result:" << s_result.m128_f32[0] << "," << s_result.m128_f32[1] << "," << s_result.m128_f32[2] << "," << s_result.m128_f32[3] << std::endl;
 }
 
 // ----------------------------------------------------------------------------
 
 static void rotateq_xy(Mat4x4& vtav, const __m128& c, const __m128& s, const int a, const int b)
 {
+	logFile << "rotateq_xy" << std::endl;
+	logFile << "vtav[0]: " << ToString(vtav.row[0]) << std::endl;
+	logFile << "vtav[1]: " << ToString(vtav.row[1]) << std::endl;
+	logFile << "vtav[2]: " << ToString(vtav.row[2]) << std::endl;
+	logFile << "vtav[3]: " << ToString(vtav.row[3]) << std::endl;
+
 	__m128 u = _mm_set_ps(
 		0.f,
 		vtav.row[a].m128_f32[a],
@@ -231,6 +245,10 @@ static void rotateq_xy(Mat4x4& vtav, const __m128& c, const __m128& s, const int
 		vtav.row[a].m128_f32[b],
 		vtav.row[a].m128_f32[b],
 		vtav.row[a].m128_f32[b]);
+
+	logFile << "u: " << ToString(u) << std::endl;
+	logFile << "v: " << ToString(v) << std::endl;
+	logFile << "A: " << ToString(A) << std::endl;
 
 	static const __m128 twos = _mm_set1_ps(2.f);
 
@@ -274,6 +292,21 @@ static void rotate_xy(Mat4x4& vtav, Mat4x4& v, float c, float s, const int& a, c
 		v.row[2].m128_f32[b],
 		v.row[1].m128_f32[b],
 		v.row[0].m128_f32[b]);
+
+	logFile << "rotate_xy" << std::endl;
+	logFile << "a:" << a << " b: " << b << std::endl;
+	logFile << "vtav[0]: " << ToString(vtav.row[0]) << std::endl;
+	logFile << "vtav[1]: " << ToString(vtav.row[1]) << std::endl;
+	logFile << "vtav[2]: " << ToString(vtav.row[2]) << std::endl;
+	logFile << "vtav[3]: " << ToString(vtav.row[3]) << std::endl;
+
+	logFile << "v[0]: " << ToString(v.row[0]) << std::endl;
+	logFile << "v[1]: " << ToString(v.row[1]) << std::endl;
+	logFile << "v[2]: " << ToString(v.row[2]) << std::endl;
+	logFile << "v[3]: " << ToString(v.row[3]) << std::endl;
+
+	logFile << "simd_u: " << ToString(simd_u) << std::endl;
+	logFile << "simd_v: " << ToString(simd_v) << std::endl;
 
 	__m128 simd_c = _mm_load1_ps(&c);
 	__m128 simd_s = _mm_load1_ps(&s);
@@ -362,11 +395,23 @@ static void svd_pseudoinverse(Mat4x4& o, const __m128& sigma, const Mat4x4& v)
 {
 	const __m128 invdet = svd_invdet(sigma);
 
+	logFile << "InvDet:" << ToString(invdet) << std::endl;
+
+	logFile << "v[0]:" << ToString(v.row[0]) << std::endl;
+	logFile << "v[1]:" << ToString(v.row[1]) << std::endl;
+	logFile << "v[2]:" << ToString(v.row[2]) << std::endl;
+	logFile << "v[3]:" << ToString(v.row[3]) << std::endl;
+
 	Mat4x4 m;
 	m.row[0] = _mm_mul_ps(v.row[0], invdet);
 	m.row[1] = _mm_mul_ps(v.row[1], invdet);
 	m.row[2] = _mm_mul_ps(v.row[2], invdet);
 	m.row[3] = _mm_set1_ps(0.f);
+
+	logFile << "m[0]:" << ToString(m.row[0]) << std::endl;
+	logFile << "m[1]:" << ToString(m.row[1]) << std::endl;
+	logFile << "m[2]:" << ToString(m.row[2]) << std::endl;
+	logFile << "m[3]:" << ToString(m.row[3]) << std::endl;
 
 	o.row[0].m128_f32[0] = vec4_dot(m.row[0], v.row[0]);
 	o.row[0].m128_f32[1] = vec4_dot(m.row[1], v.row[0]);
@@ -384,6 +429,11 @@ static void svd_pseudoinverse(Mat4x4& o, const __m128& sigma, const Mat4x4& v)
 	o.row[2].m128_f32[3] = 0.f;
 
 	o.row[3] = m.row[3];
+
+	logFile << "o[0]:" << ToString(o.row[0]) << std::endl;
+	logFile << "o[1]:" << ToString(o.row[1]) << std::endl;
+	logFile << "o[2]:" << ToString(o.row[2]) << std::endl;
+	logFile << "o[3]:" << ToString(o.row[3]) << std::endl;
 }
 
 // ----------------------------------------------------------------------------
@@ -399,9 +449,17 @@ static void svd_solve_ATA_ATb(const Mat4x4& ATA, const __m128& ATb, __m128& x)
 
 	const __m128 sigma = svd_solve_sym(V, ATA);
 
+	logFile << "Sigma: " << ToString(sigma) << std::endl;
+
 	// A = UEV^T; U = A / (E*V^T)
 	Mat4x4 Vinv;
 	svd_pseudoinverse(Vinv, sigma, V);
+
+	//logFile << "Vinv[0]:" << ToString(Vinv.row[0]) << std::endl;
+	//logFile << "Vinv[1]:" << ToString(Vinv.row[1]) << std::endl;
+	//logFile << "Vinv[2]:" << ToString(Vinv.row[2]) << std::endl;
+	//logFile << "Vinv[3]:" << ToString(Vinv.row[3]) << std::endl;
+
 	x = vec4_mul_m4x4(ATb, Vinv);
 }
 
@@ -447,7 +505,12 @@ float qef_simd_solve(
 	const __m128& pointaccum,
 	__m128& x)
 {
-	const __m128 masspoint = _mm_div_ps(pointaccum, _mm_set1_ps(pointaccum.m128_f32[3]));
+	auto v = _mm_set1_ps(pointaccum.m128_f32[3]);
+	const __m128 masspoint = _mm_div_ps(pointaccum, v);
+
+	logFile << "pointAccum: " << ToString(pointaccum) << std::endl;
+	//logFile << ToString(v) << std::endl;
+	logFile << "MassPoint: " << ToString(masspoint) << std::endl;
 
 	__m128 p = vec4_mul_m4x4(masspoint, ATA);
 	p = _mm_sub_ps(ATb, p);
@@ -455,6 +518,9 @@ float qef_simd_solve(
 	svd_solve_ATA_ATb(ATA, p, x);
 
 	const float error = qef_simd_calc_error(ATA, x, ATb);
+
+	logFile << "Solved: " << ToString(x) << std::endl;
+
 	x = _mm_add_ps(x, masspoint);
 		
 	return error;
@@ -486,6 +552,8 @@ float qef_solve_from_points(
 	_mm_store_ps(x, ATb);
 	_mm_set_ps(0.f, x[2], x[1], x[0]);
 	
+	logFile << "ATb:" << ToString(ATb) << std::endl;
+
 	return qef_simd_solve(ATA, ATb, pointaccum, *solved_position);
 }
 

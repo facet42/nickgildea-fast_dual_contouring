@@ -1,0 +1,345 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C33010",
+          "message": {
+            "text": "Unchecked lower bound for enum source used as index.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                },
+                "region": {
+                  "startLine": 7850,
+                  "startColumn": 5,
+                  "endLine": 7850,
+                  "endColumn": 37
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "GetInputSourceName",
+                  "decoratedName": "?GetInputSourceName@@YAPEBDW4ImGuiInputSource@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7846,
+                            "startColumn": 20
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7848,
+                            "startColumn": 17
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7848,
+                            "startColumn": 40
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        },
+                        "message": {
+                          "text": "Branching based on condition '1'. 'true' branch is taken"
+                        }
+                      },
+                      "kinds": [
+                        "Branch"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        },
+                        "message": {
+                          "text": "Branching based on condition '0 <= source'. 'false' branch is taken\nEnum value 'source' is checked for upper bound."
+                        }
+                      },
+                      "kinds": [
+                        "Combination"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        },
+                        "message": {
+                          "text": "Branching based on condition '0'. 'false' branch is taken"
+                        }
+                      },
+                      "kinds": [
+                        "Branch"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7849,
+                            "startColumn": 5
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 7850,
+                            "startColumn": 5
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6387",
+          "message": {
+            "text": "'_Param_(2)' could be '0'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                },
+                "region": {
+                  "startLine": 12139,
+                  "startColumn": 7,
+                  "endLine": 12139,
+                  "endColumn": 76
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "SetPlatformImeDataFn_DefaultImpl",
+                  "decoratedName": "?SetPlatformImeDataFn_DefaultImpl@@YAXPEAUImGuiViewport@@PEAUImGuiPlatformImeData@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 12131,
+                            "startColumn": 10
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 12136,
+                            "startColumn": 14
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+                          },
+                          "region": {
+                            "startLine": 12139,
+                            "startColumn": 28
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.34.31721.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///W:/github/fast_dual_contouring/demo/imgui/imgui.cpp"
+          },
+          "roles": [
+            "analysisTarget",
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "fb4ebd2b63694f8328f7d075da6886f6806faaf766c0cdbbc4da3afa49ce6cb3"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imgui.h"
+          },
+          "hashes": {
+            "sha-256": "81f4ccee8d3f8bef421757c915a79a9d9e1373699eecf78b704688ccc07ef2fe"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imconfig.h"
+          },
+          "hashes": {
+            "sha-256": "879de4ccbbe45226a4e952814dbef2325892dfc6f801d4dfc0501fd6a706e96a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imgui_internal.h"
+          },
+          "hashes": {
+            "sha-256": "ac3fa2952de18ec22df9b96fe7657540b3c52ac53205325433d634559ca7b211"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///w:/github/fast_dual_contouring/demo/imgui/imstb_textedit.h"
+          },
+          "hashes": {
+            "sha-256": "952dafd13b3bdfceb7179da7f7d11db14419e7ae3613982741428b7a036b5d27"
+          }
+        }
+      ]
+    }
+  ]
+}

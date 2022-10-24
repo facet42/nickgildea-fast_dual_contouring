@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "FastDC": {
+      "commandName": "Project",
+      "workingDirectory": "W:\\github\\nickgildea-fast_dual_contouring\\demo"
+    }
+  }
+}

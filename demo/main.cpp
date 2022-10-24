@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
 
 #include <GL\glew.h>
 #include <SDL.h>
@@ -66,17 +67,10 @@ void HandleKeyPress(const SDL_KeyboardEvent& e, bool& drawWireframe)
 
 // ----------------------------------------------------------------------------
 
-struct ViewerOptions
-{
-	float meshScale = 1.f;
-	bool drawWireframe = false;
-	bool refreshModel = false;
-};
-
 bool GUI_DrawFrame(
 	SDL_Window* window, 
 	ViewerOptions& viewerOpts, 
-	MeshSimplificationOptions& options, 
+	MeshSimplificationOptions& options,
 	SuperPrimitiveConfig& primConfig)
 {
 	ImGui::GetIO().MouseDrawCursor = false;
@@ -265,6 +259,8 @@ Mesh CreateGLMesh(MeshBuffer* buffer, const float meshScale, const MeshSimplific
 
 // ----------------------------------------------------------------------------
 
+std::fstream logFile;
+
 int main(int argc, char** argv)
 {
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
@@ -343,9 +339,23 @@ int main(int argc, char** argv)
 	viewerOpts.meshScale = 1.f;
 	options.maxEdgeSize = 2.5f;
 
-	SuperPrimitiveConfig primConfig = ConfigForShape(SuperPrimitiveConfig::Cube);
-	MeshBuffer* meshBuffer = GenerateMesh(primConfig);
+	logFile = std::fstream();
+	logFile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
+	try
+	{
+		logFile.open("fastdc_orig.log", std::ios_base::out | std::ios_base::trunc);
+		logFile << std::boolalpha;
+		logFile.precision(9);
+	}
+	catch (const std::ios_base::failure&)
+	{
+		//OutputDebugStringA(strcat((char*)ex.what() ,"\n"));
+		OutputDebugStringA(std::strerror(errno));
+	}
+
+	SuperPrimitiveConfig primConfig = ConfigForShape(SuperPrimitiveConfig::Cylinder);
+	MeshBuffer* meshBuffer = GenerateMesh(primConfig, viewerOpts);
 	auto mesh = CreateGLMesh(meshBuffer, viewerOpts.meshScale, options);
 	std::vector<Mesh> meshes{mesh};
 
@@ -415,7 +425,7 @@ int main(int argc, char** argv)
 			free(meshBuffer->triangles);
 			delete meshBuffer;
 
-			meshBuffer = GenerateMesh(primConfig);
+			meshBuffer = GenerateMesh(primConfig, viewerOpts);
 			mesh = CreateGLMesh(meshBuffer, viewerOpts.meshScale, options);
 
 			meshes.clear();
@@ -428,6 +438,8 @@ int main(int argc, char** argv)
 		mesh.destroy();
 	}
 
+	logFile.close();
+
 	ImGui_ImplSdl_Shutdown();
 
 	SDL_GL_DeleteContext(context);
@@ -437,4 +449,3 @@ int main(int argc, char** argv)
 }
 
 // ----------------------------------------------------------------------------
-
