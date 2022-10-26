@@ -338,9 +338,15 @@ static __m128 svd_solve_sym(Mat4x4& v, const Mat4x4& a)
 {
 	Mat4x4 vtav = a;
 
-	for (int i = 0; i < SVD_NUM_SWEEPS; ++i) 
+	logFile << "svd_solve_sym" << std::endl;
+	logFile << "vtav[0]: " << ToString(vtav.row[0]) << std::endl;
+	logFile << "vtav[1]: " << ToString(vtav.row[1]) << std::endl;
+	logFile << "vtav[2]: " << ToString(vtav.row[2]) << std::endl;
+	logFile << "vtav[3]: " << ToString(vtav.row[3]) << std::endl;
+
+	for (int i = 0; i < SVD_NUM_SWEEPS; ++i)
 	{
-		__m128 c, s;
+		__m128 c = __m128(), s = __m128();
 
 		if (vtav.row[0].m128_f32[1] != 0.f)
 		{
@@ -365,7 +371,15 @@ static __m128 svd_solve_sym(Mat4x4& v, const Mat4x4& a)
 			rotate_xy(vtav, v, c.m128_f32[2], s.m128_f32[2], 1, 2);
 			vtav.row[1].m128_f32[2] = 0.f;
 		}
+
+		logFile << "c:" << ToString(c) << std::endl;
+		logFile << "s:" << ToString(s) << std::endl;
 	}
+
+	logFile << "vtav[0]: " << ToString(vtav.row[0]) << std::endl;
+	logFile << "vtav[1]: " << ToString(vtav.row[1]) << std::endl;
+	logFile << "vtav[2]: " << ToString(vtav.row[2]) << std::endl;
+	logFile << "vtav[3]: " << ToString(vtav.row[3]) << std::endl;
 
 	return _mm_set_ps(
 		0.f,
@@ -451,14 +465,19 @@ static void svd_solve_ATA_ATb(const Mat4x4& ATA, const __m128& ATb, __m128& x)
 
 	logFile << "Sigma: " << ToString(sigma) << std::endl;
 
+	logFile << "V[0]:" << ToString(V.row[0]) << std::endl;
+	logFile << "V[1]:" << ToString(V.row[1]) << std::endl;
+	logFile << "V[2]:" << ToString(V.row[2]) << std::endl;
+	logFile << "V[3]:" << ToString(V.row[3]) << std::endl;
+
 	// A = UEV^T; U = A / (E*V^T)
 	Mat4x4 Vinv;
 	svd_pseudoinverse(Vinv, sigma, V);
 
-	//logFile << "Vinv[0]:" << ToString(Vinv.row[0]) << std::endl;
-	//logFile << "Vinv[1]:" << ToString(Vinv.row[1]) << std::endl;
-	//logFile << "Vinv[2]:" << ToString(Vinv.row[2]) << std::endl;
-	//logFile << "Vinv[3]:" << ToString(Vinv.row[3]) << std::endl;
+	logFile << "Vinv[0]:" << ToString(Vinv.row[0]) << std::endl;
+	logFile << "Vinv[1]:" << ToString(Vinv.row[1]) << std::endl;
+	logFile << "Vinv[2]:" << ToString(Vinv.row[2]) << std::endl;
+	logFile << "Vinv[3]:" << ToString(Vinv.row[3]) << std::endl;
 
 	x = vec4_mul_m4x4(ATb, Vinv);
 }
@@ -519,10 +538,10 @@ float qef_simd_solve(
 
 	const float error = qef_simd_calc_error(ATA, x, ATb);
 
+	x = _mm_add_ps(x, masspoint);
+
 	logFile << "Solved: " << ToString(x) << std::endl;
 
-	x = _mm_add_ps(x, masspoint);
-		
 	return error;
 }
 
