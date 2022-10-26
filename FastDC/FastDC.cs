@@ -30,31 +30,31 @@
         const float PseudoInverseThreshold = 0.001f;
 
         const float scale = 32f;    // TODO: Move / remove this
-        private float distance = 250f;
+        const float Distance = 250f;
 
         private Log? log;
 
         private ProgramHandle shader;
 
-        private const int OctreeSize = 64;
+        //private const int OctreeSize = 64;
         private const int VoxelGridSize = 128;
         private const float VoxelGridOffset = 64f;
         private readonly string logPath = "FastDC.log";
-        private static vec4[] AxisOffset =
+        private static readonly vec4[] AxisOffset =
         {
             new vec4(1f, 0f, 0f, 0f),
             new vec4(0f, 1f, 0f, 0f),
             new vec4(0f, 0f, 1f, 0f)
         };
 
-        private static ivec4[][] EdgeNodeOffsets =
+        private static readonly ivec4[][] EdgeNodeOffsets =
         {
             new[] { new ivec4(0), new ivec4(0, 0, 1, 0), new ivec4(0, 1, 0, 0), new ivec4(0, 1, 1, 0) },
             new[] { new ivec4(0), new ivec4(1, 0, 0, 0), new ivec4(0, 0, 1, 0), new ivec4(1, 0, 1, 0) },
             new[] { new ivec4(0), new ivec4(0, 1, 0, 0), new ivec4(1, 0, 0, 0), new ivec4(1, 1, 0, 0) },
         };
 
-        private static uint[] EncodedEdgeNodeOffsets =
+        private static readonly uint[] EncodedEdgeNodeOffsets =
         {
             0x00000000,
             0x00100000,
@@ -70,7 +70,7 @@
             0x00000401,
         };
 
-        private static uint[] EncodedEdgeOffsets =
+        private static readonly uint[] EncodedEdgeOffsets =
         {
             0x00000000,
             0x00100000,
@@ -88,11 +88,11 @@
 
         private MeshSimplificationOptions options;
         private ViewerOptions viewerOpts;
-        private SuperPrimitiveConfig primConfig = new SuperPrimitiveConfig();
+        private SuperPrimitiveConfig primConfig = new();
 
-        private List<Mesh> Meshes = new();
+        private readonly List<Mesh> Meshes = new();
 
-        private MeshBuffer meshBuffer = new MeshBuffer();
+        private MeshBuffer meshBuffer = new();
 
         public bool Initialise()
         {
@@ -120,7 +120,7 @@
             this.Meshes.Add(mesh);
         }
 
-        private Mesh CreateGLMesh(MeshBuffer buffer, float meshScale, MeshSimplificationOptions options)
+        private static Mesh CreateGLMesh(MeshBuffer buffer, float meshScale, MeshSimplificationOptions options)
         {
             Console.WriteLine($"Simplify iteration: error={options.MaxError}");
 
@@ -134,7 +134,7 @@
 
             simplifiedMesh.Triangles.AddRange(buffer.Triangles);
 
-            MeshSimplifier(simplifiedMesh, vec4.Zero, options);
+            //MeshSimplifier(simplifiedMesh, vec4.Zero, options);
 
             var mesh = new Mesh();
             mesh.Initialise();
@@ -143,10 +143,15 @@
             return mesh;
         }
 
-        private void MeshSimplifier(MeshBuffer simplifiedMesh, vec4 zero, MeshSimplificationOptions options)
-        {
-            Debug.WriteLine("MeshSimplifier called.");
-        }
+        //private static void MeshSimplifier(MeshBuffer simplifiedMesh, vec4 zero, MeshSimplificationOptions options)
+        //{
+        //    if (simplifiedMesh is null)
+        //    {
+        //        throw new ArgumentNullException(nameof(simplifiedMesh));
+        //    }
+
+        //    Debug.WriteLine("MeshSimplifier called.");
+        //}
 
         private MeshBuffer GenerateMesh(SuperPrimitiveConfig config)
         {
@@ -373,7 +378,7 @@
             return QefSimdSolve(ATA, ATb, pointAccum, out solvedPosition);
         }
 
-        private void QefSimdAdd(Vector128<float> p, Vector128<float> n, ref Mat4x4 ATA, ref Vector128<float> ATb, ref Vector128<float> pointAccum)
+        private static void QefSimdAdd(Vector128<float> p, Vector128<float> n, ref Mat4x4 ATA, ref Vector128<float> ATb, ref Vector128<float> pointAccum)
         {
             var nX = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(0, 0, 0, 0)), n);
             var nY = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(1, 1, 1, 1)), n);
@@ -412,7 +417,7 @@
             return error;
         }
 
-        private float QefSimdCalcError(Mat4x4 A, Vector128<float> x, Vector128<float> b)
+        private static float QefSimdCalcError(Mat4x4 A, Vector128<float> x, Vector128<float> b)
         {
             var tmp = Vec4MulM4x4(x, A);
             tmp = Sse.Subtract(b, tmp);
@@ -420,7 +425,7 @@
             return Vec4Dot(tmp, tmp);
         }
 
-        private float Vec4Dot(Vector128<float> a, Vector128<float> b)
+        private static float Vec4Dot(Vector128<float> a, Vector128<float> b)
         {
             var mul = Sse.Multiply(a, b);
             var s0 = Sse.Shuffle(mul, mul, MM_Shuffle(2, 3, 0, 1));
@@ -492,12 +497,12 @@
             log?.WriteLine($"o[3]:{ToString(o.row[3])}");
         }
 
-        private string ToString(Vector128<float> v)
+        private static string ToString(Vector128<float> v)
         {
             return $"{v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}";
         }
 
-        private Vector128<float> SvdInvDet(Vector128<float> x)
+        private static Vector128<float> SvdInvDet(Vector128<float> x)
         {
             var ones = Vector128.Create(1f);
             var tol = Vector128.Create(PseudoInverseThreshold);
@@ -511,7 +516,7 @@
             return Sse.And(cmp, one_over_x);
         }
 
-        private Vector128<float> Vec4Abs(Vector128<float> x)
+        private static Vector128<float> Vec4Abs(Vector128<float> x)
         {
             var mask = Vector128.Create(-0f);
             return Sse.AndNot(mask, x);
@@ -527,30 +532,30 @@
 
             for (int i = 0; i < SvdNumSweeps; ++i)
             {
-                Vector128<float> c = new Vector128<float>();
-                Vector128<float> s = new Vector128<float>();
+                Vector128<float> c = new();
+                Vector128<float> s = new();
 
                 if (vtav.row[0].GetElement(1) != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 1);
-                    rotateq_xy(ref vtav, c, s, 0, 1);
-                    rotate_xy(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 1);
+                    RotateQXY(ref vtav, c, s, 0, 1);
+                    RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 1);
                     vtav.row[0] = vtav.row[0].WithElement(1, 0);
                 }
 
                 if (vtav.row[0].GetElement(2) != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 2);
-                    rotateq_xy(ref vtav, c, s, 0, 2);
-                    rotate_xy(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 2);
+                    RotateQXY(ref vtav, c, s, 0, 2);
+                    RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 2);
                     vtav.row[0] = vtav.row[0].WithElement(2, 0);
                 }
 
                 if (vtav.row[1].GetElement(2) != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 1, 2);
-                    rotateq_xy(ref vtav, c, s, 1, 2);
-                    rotate_xy(ref vtav, ref v, c.GetElement(2), s.GetElement(2), 1, 2);
+                    RotateQXY(ref vtav, c, s, 1, 2);
+                    RotateXY(ref vtav, ref v, c.GetElement(2), s.GetElement(2), 1, 2);
                     vtav.row[1] = vtav.row[1].WithElement(2, 0);
                 }
             }
@@ -558,7 +563,7 @@
             return Vector128.Create(vtav.row[0].GetElement(0), vtav.row[1].GetElement(1), vtav.row[2].GetElement(2), 0f);
         }
 
-        private void rotate_xy(ref Mat4x4 vtav, ref Mat4x4 v, float c, float s, int a, int b)
+        private void RotateXY(ref Mat4x4 vtav, ref Mat4x4 v, float c, float s, int a, int b)
         {
             var simd_u = Vector128.Create(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
             var simd_v = Vector128.Create(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
@@ -602,7 +607,7 @@
             vtav.row[a] = vtav.row[a].WithElement(b, 0f);
         }
 
-        private void rotateq_xy(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
+        private void RotateQXY(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
         {
             log?.WriteLine("rotateq_xy");
             log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
@@ -698,7 +703,7 @@
             log?.WriteLine($"s_result:{s_result.GetElement(0):G9},{s_result.GetElement(1):G9},{s_result.GetElement(2):G9},{s_result.GetElement(3):G9}");
         }
 
-        private Vector128<float> Vec4MulM4x4(Vector128<float> a, Mat4x4 B)
+        private static Vector128<float> Vec4MulM4x4(Vector128<float> a, Mat4x4 B)
         {
             _ = Sse.Shuffle(a, a, 0x00);
 
@@ -709,7 +714,7 @@
             return result;
         }
 
-        private byte MM_Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
+        private static byte MM_Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
             return ((byte)(((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0))));
         }
@@ -846,14 +851,14 @@
         //    return null;
         //}
 
-        private void GenerateTriangles(VoxelInfo voxelInfo, ref MeshBuffer buffer)
+        private static void GenerateTriangles(VoxelInfo voxelInfo, ref MeshBuffer buffer)
         {
             foreach (var pair in voxelInfo.Edges)
             {
                 var edge = pair.Key;
                 var info = pair.Value;
 
-                var basePos = DecodeVoxelUniqueID(edge);
+                //var basePos = DecodeVoxelUniqueID(edge);
                 var axis = (edge >> 30) & 0xff;
 
                 var nodeId = edge & ~0xc0000000;
@@ -891,10 +896,10 @@
             }
         }
 
-        private ivec4 DecodeVoxelUniqueID(uint id)
-        {
-            return new ivec4((int)(id & 0x3ff), (int)((id >> 10) & 0x3ff), (int)((id >> 20) & 0x3ff), 0);
-        }
+        //private static ivec4 DecodeVoxelUniqueID(uint id)
+        //{
+        //    return new ivec4((int)(id & 0x3ff), (int)((id >> 10) & 0x3ff), (int)((id >> 20) & 0x3ff), 0);
+        //}
 
         /// <summary>
         /// Solve least square solution using Ax = b
@@ -1041,12 +1046,12 @@
             }
         }
 
-        private uint EncodeAxisUniqueID(uint axis, int x, int y, int z)
+        private static uint EncodeAxisUniqueID(uint axis, int x, int y, int z)
         {
             return (uint)x | ((uint)y << 10) | ((uint)z << 20) | (axis << 30);
         }
 
-        private float FindIntersection(SuperPrimitiveConfig config, vec4 p0, vec4 p1)
+        private static float FindIntersection(SuperPrimitiveConfig config, vec4 p0, vec4 p1)
         {
             const int FindEdgeInfoSteps = 16;
             const float FindEdgeInfoIncrement = 1f / FindEdgeInfoSteps;
@@ -1071,15 +1076,15 @@
             return t;
         }
 
-        private float Density(SuperPrimitiveConfig config, vec4 p)
+        private static float Density(SuperPrimitiveConfig config, vec4 p)
         {
-            return sdSuperprim(new vec3(p) / scale, new vec4(config.S), new vec2(config.R)) * scale;
+            return SuperPrimitive(new vec3(p) / scale, new vec4(config.S), new vec2(config.R)) * scale;
         }
 
         // The "super primitve" -- use the parameters to configure different shapes from a single function
         // see https://www.shadertoy.com/view/MsVGWG
 
-        float sdSuperprim(vec3 p, vec4 s, vec2 r)
+        static float SuperPrimitive(vec3 p, vec4 s, vec2 r)
         {
             var d = glm.Abs(p) - new vec3(s);
 
@@ -1090,7 +1095,7 @@
             return glm.Length(new vec2(glm.Max(q + r.y, 0f), glm.Max(d.z + r.y, 0f))) + glm.Min(-r.y, glm.Max(q, d.z));
         }
 
-        private SuperPrimitiveConfig ConfigForShape(Primitive primitive)
+        private static SuperPrimitiveConfig ConfigForShape(Primitive primitive)
         {
             var config = new SuperPrimitiveConfig();
 
@@ -1153,7 +1158,7 @@
             var dir = new vec3(0f, 0f, 1f);
             // TODO: Rotate direction
 
-            var position = dir * this.distance;
+            var position = dir * Distance;
             //TestFrame(this.Meshes[0]);
             DrawFrame(this.shader, this.Meshes, position, -dir, viewerOpts.DrawWireframe, viewerOpts.MeshScale);
         }
@@ -1172,23 +1177,23 @@
         //    }
         //}
 
-        float[] g_vertex_buffer_data = new[]
-            {
-               -1.0f, -1.0f, 0.0f,
-               0f, 0f, -1f,
-               1f, 0f, 0f,
-               1.0f, -1.0f, 0.0f,
-               0f, 0f, -1f,
-               0f, 1f, 0f,
-               0.0f,  1.0f, 0.0f,
-               0f, 0f, -1f,
-               0f, 0f, 1f
-            };
+        //float[] g_vertex_buffer_data = new[]
+        //    {
+        //       -1.0f, -1.0f, 0.0f,
+        //       0f, 0f, -1f,
+        //       1f, 0f, 0f,
+        //       1.0f, -1.0f, 0.0f,
+        //       0f, 0f, -1f,
+        //       0f, 1f, 0f,
+        //       0.0f,  1.0f, 0.0f,
+        //       0f, 0f, -1f,
+        //       0f, 0f, 1f
+        //    };
 
-        uint[] indices = new uint[]
-        {
-            0, 1, 2
-        };
+        //uint[] indices = new uint[]
+        //{
+        //    0, 1, 2
+        //};
 
         //private void TestFrame(Mesh mesh)
         //{
@@ -1293,7 +1298,7 @@
             CheckGLError();
 
             var offset = -1f * (meshes.Count / 2);
-            var o = (((meshes.Count() & 1) == 0) ? 0.5f : 0f);
+            var o = (((meshes.Count & 1) == 0) ? 0.5f : 0f);
             offset += o;
             for (int i = 0; i < meshes.Count; i++, offset++)
             {
@@ -1353,7 +1358,7 @@
             GuiDrawFrame(ref viewerOpts, ref options, ref primConfig);
         }
 
-        private void GuiDrawFrame(ref ViewerOptions viewerOpts, ref MeshSimplificationOptions options, ref SuperPrimitiveConfig primConfig)
+        private static void GuiDrawFrame(ref ViewerOptions viewerOpts, ref MeshSimplificationOptions options, ref SuperPrimitiveConfig primConfig)
         {
             ImGui.GetIO().MouseDrawCursor = false;
 

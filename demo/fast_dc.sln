@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32728.150
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fast_dc", "fast_dc.vcxproj", "{E4436CB1-561B-427F-B957-5F881CD6271B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastDC", "..\FastDC\FastDC.csproj", "{35012B63-095F-41E6-9113-B2438772DD1C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastDC", "..\FastDC\FastDC.csproj", "{35012B63-095F-41E6-9113-B2438772DD1C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,11 +18,9 @@ Global
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Debug|Any CPU.Build.0 = Debug|x64
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Debug|x64.ActiveCfg = Debug|x64
-		{E4436CB1-561B-427F-B957-5F881CD6271B}.Debug|x64.Build.0 = Debug|x64
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Release|Any CPU.ActiveCfg = Release|x64
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Release|Any CPU.Build.0 = Release|x64
 		{E4436CB1-561B-427F-B957-5F881CD6271B}.Release|x64.ActiveCfg = Release|x64
-		{E4436CB1-561B-427F-B957-5F881CD6271B}.Release|x64.Build.0 = Release|x64
 		{35012B63-095F-41E6-9113-B2438772DD1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{35012B63-095F-41E6-9113-B2438772DD1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35012B63-095F-41E6-9113-B2438772DD1C}.Debug|x64.ActiveCfg = Debug|Any CPU
