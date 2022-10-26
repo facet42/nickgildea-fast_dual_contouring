@@ -26,7 +26,7 @@
     //using System.Text;
     //using System.Threading.Tasks;
 
-    internal class FastDC
+    internal partial class FastDC
     {
         const int SvdNumSweeps = 5;
         const float PseudoInverseThreshold = 0.001f;
@@ -346,73 +346,6 @@
             return error;
         }
 
-        struct Mat4x4
-        {
-            public Vector4[] row = new Vector4[4];
-
-            public Mat4x4()
-            {
-            }
-
-            public Matrix4x4 AsMatrix4x4()
-            {
-                return new Matrix4x4(
-                    row[0].X, row[0].Y, row[0].Z, row[0].W,
-                    row[1].X, row[1].Y, row[1].Z, row[1].W,
-                    row[2].X, row[2].Y, row[2].Z, row[2].W,
-                    row[3].X, row[3].Y, row[3].Z, row[3].W);
-            }
-
-            public float this[int row, int column]
-            {
-                get
-                {
-                    switch (column)
-                    {
-                        case 0:
-                            return this.row[row].X;
-
-                        case 1:
-                            return this.row[row].Y;
-
-                        case 2:
-                            return this.row[row].Z;
-
-                        case 3:
-                            return this.row[row].W;
-
-                        default:
-                            throw new IndexOutOfRangeException();
-                    }
-                }
-
-                set
-                {
-                    switch (column)
-                    {
-                        case 0:
-                            this.row[row].X = value;
-                            return;
-
-                        case 1:
-                            this.row[row].Y = value;
-                            return;
-
-                        case 2:
-                            this.row[row].Z = value;
-                            return;
-
-                        case 3:
-                            this.row[row].W = value;
-                            return;
-
-                        default:
-                            throw new IndexOutOfRangeException();
-                    }
-                }
-            }
-        }
-
         private float QefSolveFromPoints(Vector128<float>[] positions, Vector128<float>[] normals, int count, out Vector4 solvedPosition)
         {
             var pointAccum = new Vector4();
@@ -427,7 +360,7 @@
 
             log?.WriteLine($"ATb:{ATb.X:0.000000000},{ATb.Y:0.000000000},{ATb.Z:0.000000000},{ATb.W:0.000000000}");
 
-            return QefSimdSolve(ATA.AsMatrix4x4(), ATb, pointAccum, out solvedPosition);
+            return QefSimdSolve(ATA, ATb, pointAccum, out solvedPosition);
         }
 
         private static void QefSimdAdd(Vector128<float> p, Vector128<float> n, ref Mat4x4 ATA, ref Vector4 ATb, ref Vector4 pointAccum)
@@ -447,14 +380,14 @@
             pointAccum += p.AsVector4();
         }
 
-        private float QefSimdSolve(Matrix4x4 ATA, Vector4 ATb, Vector4 pointAccum, out Vector4 solved)
+        private float QefSimdSolve(Mat4x4 ATA, Vector4 ATb, Vector4 pointAccum, out Vector4 solved)
         {
             var massPoint = pointAccum / pointAccum.W;
 
             log?.WriteLine($"pointAccum: {pointAccum.X:0.000000000},{pointAccum.Y:0.000000000},{pointAccum.Z:0.000000000},{pointAccum.W:0.000000000}");
             log?.WriteLine($"MassPoint: {massPoint.X:0.000000000},{massPoint.Y:0.000000000},{massPoint.Z:0.000000000},{massPoint.W:0.000000000}");
 
-            var p = ATb - Vector4.Transform(massPoint, ATA);
+            var p = ATb - Vector4.Transform(massPoint, ATA.AsMatrix4x4());
 
             SvdSolveATAATb(ATA, p, out solved);
 
@@ -467,9 +400,9 @@
             return error;
         }
 
-        private static float QefSimdCalcError(Matrix4x4 A, Vector4 x, Vector4 b)
+        private static float QefSimdCalcError(Mat4x4 A, Vector4 x, Vector4 b)
         {
-            var tmp = b - Vector4.Transform(x, A);
+            var tmp = b - Vector4.Transform(x, A.AsMatrix4x4());
             return Vector4.Dot(tmp, tmp);
         }
 
@@ -480,9 +413,9 @@
             return Vector4.Dot(v0, v1);
         }
 
-        private void SvdSolveATAATb(Matrix4x4 ATA, Vector4 ATb, out Vector4 x)
+        private void SvdSolveATAATb(Mat4x4 ATA, Vector4 ATb, out Vector4 x)
         {
-            var V = new Matrix4x4(
+            var V = new Mat4x4(
                 1f, 0, 0, 0,
                 0, 1f, 0, 0,
                 0, 0, 1f, 0,
@@ -493,34 +426,36 @@
 
             log?.WriteLine($"Sigma: {sigma.X:#0.000000000},{sigma.Y:#0.000000000},{sigma.Z:#0.000000000},{sigma.W:#0.000000000}");
 
-            log?.WriteLine($"V[0]:{V.M11:#0.000000000},{V.M12:#0.000000000},{V.M13:#0.000000000},{V.M14:#0.000000000}");
-            log?.WriteLine($"V[1]:{V.M21:#0.000000000},{V.M22:#0.000000000},{V.M23:#0.000000000},{V.M24:#0.000000000}");
-            log?.WriteLine($"V[2]:{V.M31:#0.000000000},{V.M32:#0.000000000},{V.M33:#0.000000000},{V.M34:#0.000000000}");
-            log?.WriteLine($"V[3]:{V.M41:#0.000000000},{V.M42:#0.000000000},{V.M43:#0.000000000},{V.M44:#0.000000000}");
+            log?.WriteLine($"V[0]:{V[0, 0]:#0.000000000},{V[0, 1]:#0.000000000},{V[0, 2]:#0.000000000},{V[0, 3]:#0.000000000}");
+            log?.WriteLine($"V[1]:{V[1, 0]:#0.000000000},{V[1, 1]:#0.000000000},{V[1, 2]:#0.000000000},{V[1, 3]:#0.000000000}");
+            log?.WriteLine($"V[2]:{V[2, 0]:#0.000000000},{V[2, 1]:#0.000000000},{V[2, 2]:#0.000000000},{V[2, 3]:#0.000000000}");
+            log?.WriteLine($"V[3]:{V[3, 0]:#0.000000000},{V[3, 1]:#0.000000000},{V[3, 2]:#0.000000000},{V[3, 3]:#0.000000000}");
 
             SvdPseudoInverse(out var Vinv, sigma, V);
 
-            log?.WriteLine($"Vinv[0]:{Vinv.M11:#0.000000000},{Vinv.M12:#0.000000000},{Vinv.M13:#0.000000000},{Vinv.M14:#0.000000000}");
-            log?.WriteLine($"Vinv[1]:{Vinv.M21:#0.000000000},{Vinv.M22:#0.000000000},{Vinv.M23:#0.000000000},{Vinv.M24:#0.000000000}");
-            log?.WriteLine($"Vinv[2]:{Vinv.M31:#0.000000000},{Vinv.M32:#0.000000000},{Vinv.M33:#0.000000000},{Vinv.M34:#0.000000000}");
-            log?.WriteLine($"Vinv[3]:{Vinv.M41:#0.000000000},{Vinv.M42:#0.000000000},{Vinv.M43:#0.000000000},{Vinv.M44:#0.000000000}");
+            //log?.WriteLine($"Vinv[0]:{Vinv.M11:#0.000000000},{Vinv.M12:#0.000000000},{Vinv.M13:#0.000000000},{Vinv.M14:#0.000000000}");
+            //log?.WriteLine($"Vinv[1]:{Vinv.M21:#0.000000000},{Vinv.M22:#0.000000000},{Vinv.M23:#0.000000000},{Vinv.M24:#0.000000000}");
+            //log?.WriteLine($"Vinv[2]:{Vinv.M31:#0.000000000},{Vinv.M32:#0.000000000},{Vinv.M33:#0.000000000},{Vinv.M34:#0.000000000}");
+            //log?.WriteLine($"Vinv[3]:{Vinv.M41:#0.000000000},{Vinv.M42:#0.000000000},{Vinv.M43:#0.000000000},{Vinv.M44:#0.000000000}");
+            log?.WriteLine($"Vinv:{Vinv}");
 
-            x = Vector4.Transform(ATb, Vinv);
+            x = Vector4.Transform(ATb, Vinv.AsMatrix4x4());
         }
 
-        private void SvdPseudoInverse(out Matrix4x4 o, Vector4 sigma, Matrix4x4 v)
+        private void SvdPseudoInverse(out Mat4x4 o, Vector4 sigma, Mat4x4 v)
         {
             var invDet = SvdInvDet(sigma);
             log?.WriteLine($"InvDet:{ToString(invDet)}");
 
-            log?.WriteLine($"v[0]:{v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
-            log?.WriteLine($"v[1]:{v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
-            log?.WriteLine($"v[2]:{v.M31:#0.000000000},{v.M32:#0.000000000},{v.M33:#0.000000000},{v.M34:#0.000000000}");
-            log?.WriteLine($"v[3]:{v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
+            //log?.WriteLine($"v[0]:{v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
+            //log?.WriteLine($"v[1]:{v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
+            //log?.WriteLine($"v[2]:{v.M31:#0.000000000},{v.M32:#0.000000000},{v.M33:#0.000000000},{v.M34:#0.000000000}");
+            //log?.WriteLine($"v[3]:{v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
+            log?.WriteLine($"v:{v}");
 
-            var v0 = Vector128.Create(v.M11, v.M12, v.M13, v.M14);
-            var v1 = Vector128.Create(v.M21, v.M22, v.M23, v.M24);
-            var v2 = Vector128.Create(v.M31, v.M32, v.M33, v.M34);
+            var v0 = Vector128.Create(v[0, 0], v[0, 1], v[0, 2], v[0, 3]);
+            var v1 = Vector128.Create(v[1, 0], v[1, 1], v[1, 2], v[1, 3]);
+            var v2 = Vector128.Create(v[2, 0], v[2, 1], v[2, 2], v[2, 3]);
 
             var m = new Mat4x4();
             //m.row[0] = Sse.Multiply(v0, invDet);
@@ -537,45 +472,45 @@
             log?.WriteLine($"m[2]:{ToString(m.row[2].AsVector128())}");
             log?.WriteLine($"m[3]:{ToString(m.row[3].AsVector128())}");
 
-            o = new Matrix4x4
-            {
-                //o.row[0] = o.row[0].WithElement(0, Dot(m.row[0], v.row[0]));
-                //o.row[0] = o.row[0].WithElement(1, Dot(m.row[1], v.row[0]));
-                //o.row[0] = o.row[0].WithElement(2, Dot(m.row[2], v.row[0]));
-                //o.row[0] = o.row[0].WithElement(3, 0);
-                M11 = Dot(m.row[0].AsVector128(), v0),
-                M12 = Dot(m.row[1].AsVector128(), v0),
-                M13 = Dot(m.row[2].AsVector128(), v0),
-                M14 = 0f,
+            o = new Mat4x4();
 
-                //o.row[1] = o.row[1].WithElement(0, Dot(m.row[0], v.row[1]));
-                //o.row[1] = o.row[1].WithElement(1, Dot(m.row[1], v.row[1]));
-                //o.row[1] = o.row[1].WithElement(2, Dot(m.row[2], v.row[1]));
-                //o.row[1] = o.row[1].WithElement(3, 0);
-                M21 = Dot(m.row[0].AsVector128(), v1),
-                M22 = Dot(m.row[1].AsVector128(), v1),
-                M23 = Dot(m.row[2].AsVector128(), v1),
-                M24 = 0f,
+            //o.row[0] = o.row[0].WithElement(0, Dot(m.row[0], v.row[0]));
+            //o.row[0] = o.row[0].WithElement(1, Dot(m.row[1], v.row[0]));
+            //o.row[0] = o.row[0].WithElement(2, Dot(m.row[2], v.row[0]));
+            //o.row[0] = o.row[0].WithElement(3, 0);
+            o[0, 0] = Dot(m.row[0].AsVector128(), v0);
+            o[0, 1] = Dot(m.row[1].AsVector128(), v0);
+            o[0, 2] = Dot(m.row[2].AsVector128(), v0);
+            o[0, 3] = 0f;
 
-                //o.row[2] = o.row[2].WithElement(0, Dot(m.row[0], v.row[2]));
-                //o.row[2] = o.row[2].WithElement(1, Dot(m.row[1], v.row[2]));
-                //o.row[2] = o.row[2].WithElement(2, Dot(m.row[2], v.row[2]));
-                //o.row[2] = o.row[2].WithElement(3, 0);
-                M31 = Dot(m.row[0].AsVector128(), v2),
-                M32 = Dot(m.row[1].AsVector128(), v2),
-                M33 = Dot(m.row[2].AsVector128(), v2),
-                M34 = 0f,
+            //o.row[1] = o.row[1].WithElement(0, Dot(m.row[0], v.row[1]));
+            //o.row[1] = o.row[1].WithElement(1, Dot(m.row[1], v.row[1]));
+            //o.row[1] = o.row[1].WithElement(2, Dot(m.row[2], v.row[1]));
+            //o.row[1] = o.row[1].WithElement(3, 0);
+            o[1, 0] = Dot(m.row[0].AsVector128(), v1);
+            o[1, 1] = Dot(m.row[1].AsVector128(), v1);
+            o[1, 2] = Dot(m.row[2].AsVector128(), v1);
+            o[1, 3] = 0f;
 
-                M41 = m.row[3].X,
-                M42 = m.row[3].Y,
-                M43 = m.row[3].Z,
-                M44 = m.row[3].W
-            };
+            //o.row[2] = o.row[2].WithElement(0, Dot(m.row[0], v.row[2]));
+            //o.row[2] = o.row[2].WithElement(1, Dot(m.row[1], v.row[2]));
+            //o.row[2] = o.row[2].WithElement(2, Dot(m.row[2], v.row[2]));
+            //o.row[2] = o.row[2].WithElement(3, 0);
+            o[2, 0] = Dot(m.row[0].AsVector128(), v2);
+            o[2, 1] = Dot(m.row[1].AsVector128(), v2);
+            o[2, 2] = Dot(m.row[2].AsVector128(), v2);
+            o[2, 3] = 0f;
 
-            log?.WriteLine($"o[0]:{o.M11:#0.000000000},{o.M12:#0.000000000},{o.M13:#0.000000000},{o.M14:#0.000000000}");
-            log?.WriteLine($"o[1]:{o.M21:#0.000000000},{o.M22:#0.000000000},{o.M23:#0.000000000},{o.M24:#0.000000000}");
-            log?.WriteLine($"o[2]:{o.M31:#0.000000000},{o.M32:#0.000000000},{o.M33:#0.000000000},{o.M34:#0.000000000}");
-            log?.WriteLine($"o[3]:{o.M41:#0.000000000},{o.M42:#0.000000000},{o.M43:#0.000000000},{o.M44:#0.000000000}");
+            o[3, 0] = m.row[3].X;
+            o[3, 1] = m.row[3].Y;
+            o[3, 2] = m.row[3].Z;
+            o[3, 3] = m.row[3].W;
+
+            //log?.WriteLine($"o[0]:{o.M11:#0.000000000},{o.M12:#0.000000000},{o.M13:#0.000000000},{o.M14:#0.000000000}");
+            //log?.WriteLine($"o[1]:{o.M21:#0.000000000},{o.M22:#0.000000000},{o.M23:#0.000000000},{o.M24:#0.000000000}");
+            //log?.WriteLine($"o[2]:{o.M31:#0.000000000},{o.M32:#0.000000000},{o.M33:#0.000000000},{o.M34:#0.000000000}");
+            //log?.WriteLine($"o[3]:{o.M41:#0.000000000},{o.M42:#0.000000000},{o.M43:#0.000000000},{o.M44:#0.000000000}");
+            log?.WriteLine($"o:{o}");
         }
 
         private static string ToString(Vector128<float> v)
@@ -604,13 +539,13 @@
         //    //return Sse.AndNot(mask, x);
         //}
 
-        private Vector4 SvdSolveSym(ref Matrix4x4 v, Matrix4x4 a)
+        private Vector4 SvdSolveSym(ref Mat4x4 v, Mat4x4 a)
         {
             var vtav = new Mat4x4();
-            vtav.row[0] = Vector128.Create(a.M11, a.M12, a.M13, a.M14).AsVector4();
-            vtav.row[1] = Vector128.Create(a.M21, a.M22, a.M23, a.M24).AsVector4();
-            vtav.row[2] = Vector128.Create(a.M31, a.M32, a.M33, a.M34).AsVector4();
-            vtav.row[3] = Vector128.Create(a.M41, a.M42, a.M43, a.M44).AsVector4();
+            vtav.row[0] = Vector128.Create(a[0, 0], a[0, 1], a[0, 2], a[0, 3]).AsVector4();
+            vtav.row[1] = Vector128.Create(a[1, 0], a[1, 1], a[1, 2], a[1, 3]).AsVector4();
+            vtav.row[2] = Vector128.Create(a[2, 0], a[2, 1], a[2, 2], a[2, 3]).AsVector4();
+            vtav.row[3] = Vector128.Create(a[3, 0], a[3, 1], a[3, 2], a[3, 3]).AsVector4();
 
             log?.WriteLine("svd_solve_sym");
             log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
@@ -659,151 +594,154 @@
             return new Vector4(vtav.row[0].X, vtav.row[1].Y, vtav.row[2].Z, 0f);
         }
 
-        public static float Item(Matrix4x4 m, int row, int column)
+        public static float Item(Mat4x4 m, int row, int column)
         {
-            switch (row)
-            {
-                case 0:
-                    switch (column)
-                    {
-                        case 0:
-                            return m.M11;
-                        case 1:
-                            return m.M12;
-                        case 2:
-                            return m.M13;
-                        case 3:
-                            return m.M14;
-                    }
-                    break;
+            return m[row, column];
+            //switch (row)
+            //{
+            //    case 0:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                return m.M11;
+            //            case 1:
+            //                return m.M12;
+            //            case 2:
+            //                return m.M13;
+            //            case 3:
+            //                return m.M14;
+            //        }
+            //        break;
 
-                case 1:
-                    switch (column)
-                    {
-                        case 0:
-                            return m.M21;
-                        case 1:
-                            return m.M22;
-                        case 2:
-                            return m.M23;
-                        case 3:
-                            return m.M24;
-                    }
-                    break;
+            //    case 1:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                return m.M21;
+            //            case 1:
+            //                return m.M22;
+            //            case 2:
+            //                return m.M23;
+            //            case 3:
+            //                return m.M24;
+            //        }
+            //        break;
 
-                case 2:
-                    switch (column)
-                    {
-                        case 0:
-                            return m.M31;
-                        case 1:
-                            return m.M32;
-                        case 2:
-                            return m.M33;
-                        case 3:
-                            return m.M34;
-                    }
-                    break;
+            //    case 2:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                return m.M31;
+            //            case 1:
+            //                return m.M32;
+            //            case 2:
+            //                return m.M33;
+            //            case 3:
+            //                return m.M34;
+            //        }
+            //        break;
 
-                case 3:
-                    switch (column)
-                    {
-                        case 0:
-                            return m.M41;
-                        case 1:
-                            return m.M42;
-                        case 2:
-                            return m.M43;
-                        case 3:
-                            return m.M44;
-                    }
-                    break;
-            }
+            //    case 3:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                return m.M41;
+            //            case 1:
+            //                return m.M42;
+            //            case 2:
+            //                return m.M43;
+            //            case 3:
+            //                return m.M44;
+            //        }
+            //        break;
+            //}
 
-            throw new IndexOutOfRangeException();
+            //throw new IndexOutOfRangeException();
         }
 
-        public static void Item(ref Matrix4x4 m, int row, int column, float value)
+        public static void Item(ref Mat4x4 m, int row, int column, float value)
         {
-            switch (row)
-            {
-                case 0:
-                    switch (column)
-                    {
-                        case 0:
-                            m.M11 = value;
-                            return;
-                        case 1:
-                            m.M12 = value;
-                            return;
-                        case 2:
-                            m.M13 = value;
-                            return;
-                        case 3:
-                            m.M14 = value;
-                            return;
-                    }
-                    break;
+            m[row, column] = value;
 
-                case 1:
-                    switch (column)
-                    {
-                        case 0:
-                            m.M21 = value;
-                            return;
-                        case 1:
-                            m.M22 = value;
-                            return;
-                        case 2:
-                            m.M23 = value;
-                            return;
-                        case 3:
-                            m.M24 = value;
-                            return;
-                    }
-                    break;
+            //switch (row)
+            //{
+            //    case 0:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                m.M11 = value;
+            //                return;
+            //            case 1:
+            //                m.M12 = value;
+            //                return;
+            //            case 2:
+            //                m.M13 = value;
+            //                return;
+            //            case 3:
+            //                m.M14 = value;
+            //                return;
+            //        }
+            //        break;
 
-                case 2:
-                    switch (column)
-                    {
-                        case 0:
-                            m.M31 = value;
-                            return;
-                        case 1:
-                            m.M32 = value;
-                            return;
-                        case 2:
-                            m.M33 = value;
-                            return;
-                        case 3:
-                            m.M34 = value;
-                            return;
-                    }
-                    break;
+            //    case 1:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                m.M21 = value;
+            //                return;
+            //            case 1:
+            //                m.M22 = value;
+            //                return;
+            //            case 2:
+            //                m.M23 = value;
+            //                return;
+            //            case 3:
+            //                m.M24 = value;
+            //                return;
+            //        }
+            //        break;
 
-                case 3:
-                    switch (column)
-                    {
-                        case 0:
-                            m.M41 = value;
-                            return;
-                        case 1:
-                            m.M42 = value;
-                            return;
-                        case 2:
-                            m.M43 = value;
-                            return;
-                        case 3:
-                            m.M44 = value;
-                            return;
-                    }
-                    break;
-            }
+            //    case 2:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                m.M31 = value;
+            //                return;
+            //            case 1:
+            //                m.M32 = value;
+            //                return;
+            //            case 2:
+            //                m.M33 = value;
+            //                return;
+            //            case 3:
+            //                m.M34 = value;
+            //                return;
+            //        }
+            //        break;
 
-            throw new IndexOutOfRangeException();
+            //    case 3:
+            //        switch (column)
+            //        {
+            //            case 0:
+            //                m.M41 = value;
+            //                return;
+            //            case 1:
+            //                m.M42 = value;
+            //                return;
+            //            case 2:
+            //                m.M43 = value;
+            //                return;
+            //            case 3:
+            //                m.M44 = value;
+            //                return;
+            //        }
+            //        break;
+            //}
+
+            //throw new IndexOutOfRangeException();
         }
 
-        private void RotateXY(ref Mat4x4 vtav, ref Matrix4x4 v, float c, float s, int a, int b)
+        private void RotateXY(ref Mat4x4 vtav, ref Mat4x4 v, float c, float s, int a, int b)
         {
             //var v = new Mat4x4();
             //v.row[0] = Vector128.Create(vv.M11, vv.M12, vv.M13, vv.M14);
@@ -825,10 +763,11 @@
             log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
             log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
-            log?.WriteLine($"v[0]: {v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
-            log?.WriteLine($"v[1]: {v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
-            log?.WriteLine($"v[2]: {v.M31:#0.000000000},{v.M32:#0.000000000},{v.M33:#0.000000000},{v.M34:#0.000000000}");
-            log?.WriteLine($"v[3]: {v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
+            //log?.WriteLine($"v[0]: {v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
+            //log?.WriteLine($"v[1]: {v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
+            //log?.WriteLine($"v[2]: {v.M31:#0.000000000},{v.M32:#0.000000000},{v.M33:#0.000000000},{v.M34:#0.000000000}");
+            //log?.WriteLine($"v[3]: {v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
+            log?.WriteLine($"v:{v}");
 
             log?.WriteLine($"simd_u: {simd_u.X:#0.000000000},{simd_u.Y:#0.000000000},{simd_u.Z:#0.000000000},{simd_u.W:#0.000000000}");
             log?.WriteLine($"simd_v: {simd_v.X:#0.000000000},{simd_v.Y:#0.000000000},{simd_v.Z:#0.000000000},{simd_v.W:#0.000000000}");
@@ -876,7 +815,7 @@
 
             vtav[a, b] = 0f;
 
-            //vv = v.AsMatrix4x4();
+            //vv = v.AsMat4x4();
         }
 
         private void RotateQXY(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
@@ -985,7 +924,7 @@
         //    //result = Sse.Add(result, Sse.Multiply(Sse.Shuffle(a, a, 0xff), B.row[3]));
         //    //return result;
 
-        //    return Vector4.Transform(a.AsVector4(), B.AsMatrix4x4()).AsVector128();
+        //    return Vector4.Transform(a.AsVector4(), B.AsMat4x4()).AsVector128();
         //}
 
         private static byte MM_Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
@@ -993,7 +932,7 @@
             return ((byte)(((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0))));
         }
 
-        //private Vector3 QefSolve(Matrix4x4 ata, Vector4 atb, Vector4 pointaccum)
+        //private Vector3 QefSolve(Mat4x4 ata, Vector4 atb, Vector4 pointaccum)
         //{
         //    var masspoint = new Vector3(pointaccum.X, pointaccum.Y, pointaccum.Z) / pointaccum.W;
 
@@ -1003,7 +942,7 @@
         //    return new Vector3(x.X, x.Y, x.Z) + masspoint;
         //}
 
-        //private Vector4 SolveAtaAtb(Matrix4x4 ata, Vector4 atb)
+        //private Vector4 SolveAtaAtb(Mat4x4 ata, Vector4 atb)
         //{
         //    var V = new Mat3(1.0f);
         //    Vector3 sigma = SolveSym(ata, ref V);
@@ -1014,12 +953,12 @@
         //    return Vector4.Transform(atb, Vinv);
         //}
 
-        //private Matrix4x4 Pseudoinverse(Vector3 sigma, Mat3 v)
+        //private Mat4x4 Pseudoinverse(Vector3 sigma, Mat3 v)
         //{
         //    throw new NotImplementedException();
         //}
 
-        //private Vector3 SolveSym(Matrix4x4 a, ref Mat3 v)
+        //private Vector3 SolveSym(Mat4x4 a, ref Mat3 v)
         //{
         //    // assuming that A is symmetric: can optimize all operations for 
         //    // the upper right triagonal
@@ -1038,12 +977,12 @@
         //    return new Vector3(vtav.M11, vtav.M22, vtav.M33);
         //}
 
-        //private void Rotate(ref Matrix4x4 vtav, ref Mat3 v1, int v2, int v3)
+        //private void Rotate(ref Mat4x4 vtav, ref Mat3 v1, int v2, int v3)
         //{
         //    throw new NotImplementedException();
         //}
 
-        //private Vector4 VmulSym(Matrix4x4 a, Vector3 v)
+        //private Vector4 VmulSym(Mat4x4 a, Vector3 v)
         //{
         //    return new Vector4(
         //        Vector3.Dot(new Vector3(a.M11, a.M12, a.M13), v),
@@ -1052,7 +991,7 @@
         //        0f);
         //}
 
-        //private void QefAdd(Vector4 n, Vector4 p, ref Matrix4x4 ata, ref Vector4 atb, ref Vector4 pointaccum)
+        //private void QefAdd(Vector4 n, Vector4 p, ref Mat4x4 ata, ref Vector4 atb, ref Vector4 pointaccum)
         //{
         //    ata.M11 += n.X * n.X;
         //    ata.M12 += n.X * n.Y;
