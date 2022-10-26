@@ -4,24 +4,25 @@
 
     using ImGuiNET;
 
-    using MathNet.Numerics.LinearAlgebra;
-    using MathNet.Numerics.LinearAlgebra.Single;
+    //using MathNet.Numerics.LinearAlgebra;
+    //using MathNet.Numerics.LinearAlgebra.Single;
 
     using OpenTK.Graphics;
     using OpenTK.Graphics.OpenGL;
 
-    using Qef;
+    //using Qef;
 
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Numerics;
     using System.Runtime.InteropServices;
     using System.Runtime.Intrinsics;
     using System.Runtime.Intrinsics.X86;
-    using System.Text;
-    using System.Threading.Tasks;
+    //using System.Text;
+    //using System.Threading.Tasks;
 
     internal class FastDC
     {
@@ -30,6 +31,8 @@
 
         const float scale = 32f;    // TODO: Move / remove this
         private float distance = 250f;
+
+        private Log? log;
 
         private ProgramHandle shader;
 
@@ -83,15 +86,13 @@
             0x80000401,
         };
 
-        private float rotateX = -60f, rotateY = 0f;
-
         private MeshSimplificationOptions options;
         private ViewerOptions viewerOpts;
-        private SuperPrimitiveConfig primConfig;
+        private SuperPrimitiveConfig primConfig = new SuperPrimitiveConfig();
 
         private List<Mesh> Meshes = new();
 
-        private MeshBuffer meshBuffer;
+        private MeshBuffer meshBuffer = new MeshBuffer();
 
         public bool Initialise()
         {
@@ -165,6 +166,11 @@
 
         private void Dump(SuperPrimitiveConfig config, ViewerOptions viewer, VoxelInfo voxelInfo, MeshBuffer buffer)
         {
+            if (this.log == null)
+            {
+                return;
+            }
+
             this.log.WriteLine($"R:{config.R} S:{config.S}");
 
             this.log.WriteLine($"Scale:{viewer.MeshScale}");
@@ -210,57 +216,35 @@
 
         private void GenerateVertexData(VoxelInfo info, ref MeshBuffer buffer)
         {
-            log.WriteLine("GenerateVertexData\n==================");
-            log.WriteLine(info.Voxels.Count.ToString());
+            log?.WriteLine("GenerateVertexData\n==================");
+            log?.WriteLine(info.Voxels.Count.ToString());
 
             var idxCounter = 0;
             foreach (var voxelId in info.Voxels)
             {
-                log.WriteLine($"VID:{voxelId}");
+                log?.WriteLine($"VID:{voxelId}");
 
                 var p = new vec4[12];
                 var n = new vec4[12];
 
                 var idx = 0;
-                var centre = vec4.Zero;
                 for (int i = 0; i < 12; i++)
                 {
                     var edgeId = voxelId + EncodedEdgeOffsets[i];
-                    log.WriteLine($"EID:{edgeId}");
+                    log?.WriteLine($"EID:{edgeId}");
 
                     if (info.Edges.ContainsKey(edgeId) == true)
                     {
-                        //var info = edges[edgeId];
-                        //var ps = info.Position;
-                        //var normal = info.Normal;
-
                         p[idx] = info.Edges[edgeId].Position;
                         n[idx] = info.Edges[edgeId].Normal;
                         idx++;
 
-                        centre += info.Edges[edgeId].Position;
-
-                        log.WriteLine($"P:{p[idx].x:G9},{p[idx].y:G9},{p[idx].z:G9},{p[idx].w:G9}");
-                        log.WriteLine($"N:{n[idx].x:G9},{n[idx].y:G9},{n[idx].z:G9},{n[idx].w:G9}");
+                        log?.WriteLine($"P:{p[idx].x:G9},{p[idx].y:G9},{p[idx].z:G9},{p[idx].w:G9}");
+                        log?.WriteLine($"N:{n[idx].x:G9},{n[idx].y:G9},{n[idx].z:G9},{n[idx].w:G9}");
                     }
                 }
 
-                centre /= idx;
-
-                //var nodePos = new vec3();
-                //var pp = DetectSharpFeature(this.options, p, n, idx);
-                //if (pp.HasValue == true)
-                //{
-                //    nodePos = new vec3(pp.Value.X, pp.Value.Y, pp.Value.Z);
-                //}
-                //else
-                //{
                 var error = QefSolveFromPoints4d(p, n, idx, out var nodePos);
-                //var nodePos = SolveQEF(p, n, idx);
-                //var nodePos = CalculateCubeQEF(n, p, idx, centre);
-                //var nodePos = new vec3(centre.xyz);
-                //}
-
                 var nodeNormal = vec3.Zero;
                 for (int i = 0; i < idx; i++)
                 {
@@ -268,176 +252,71 @@
                 }
                 nodeNormal *= (1f / (float)idx);
 
-                log.WriteLine($"NP:{nodePos.x:G9},{nodePos.y:G9},{nodePos.z:G9}");
-                log.WriteLine($"NN:{nodeNormal.x:G9},{nodeNormal.y:G9},{nodeNormal.z:G9}");
+                log?.WriteLine($"NP:{nodePos.x:G9},{nodePos.y:G9},{nodePos.z:G9}");
+                log?.WriteLine($"NN:{nodeNormal.x:G9},{nodeNormal.y:G9},{nodeNormal.z:G9}");
 
                 info.Indices.Add(voxelId, idxCounter++);
 
                 buffer.Vertices.Add(new MeshVertex() { Position = nodePos, Normal = nodeNormal });
-
-                //var normals = new List<Vector3>();
-                //var points = new List<Vector3>();
-
-                //var mid = Vector3.Zero;
-                //var nm = Vector3.Zero;
-                //for (int i = 0; i < idx; i++)
-                //{
-                //    var nn = new Vector3(n[i].x, n[i].y, n[i].z);
-                //    normals.Add(nn);
-
-                //    var pp = new Vector3(p[i].x, p[i].y, p[i].z);
-                //    points.Add(pp);
-
-                //    mid += pp;
-                //    nm += nn;
-                //}
-
-                //mid /= idx;
-                //nm /= idx;
-
-                //vertexIndices[voxelId] = idxCounter++;
-
-                //if (idx > 2 && idx <= 12)
-                //{
-                //    var np = CalculateCubeQEF(normals.ToArray(), points.ToArray(), mid);
-
-                //    buffer.Vertices.Add(new MeshVertex() { Position = new vec3(np.X, np.Y, np.Z), Normal = new vec3(nm.X, nm.Y, nm.Z) });
-                //}
-                //else
-                //{
-                //    buffer.Vertices.Add(new MeshVertex() { Position = new vec3(mid.X, mid.Y, mid.Z), Normal = new vec3(nm.X, nm.Y, nm.Z) });
-                //}
-
-
-
-                //    var result = 0f;
-                //    if (idx > 2 && idx <= 12)
-                //    {
-                //        var ata = new Mat3();
-                //        var atb = new Vec3();
-                //        var accum = new Vec4();
-
-                //        for (int i = 0; i < idx; i++)
-                //        {
-                //            Qef.Add(new Vec3(n[i].x, n[i].y, n[i].z), new Vec3(p[i].x, p[i].y, p[i].z), ref ata, ref atb, ref accum);
-                //        }
-
-                //        result = Qef.Solve(ata, atb, accum, out var nodeP);
-
-                //        if (result == 0)
-                //        {
-                //            var normal = vec3.Zero;
-
-                //            for (int i = 0; i < idx; i++)
-                //            {
-                //                normal += n[i].xyz;
-                //            }
-
-                //            normal *= (1f / (float)idx);
-
-                //            vertexIndices[voxelId] = idxCounter++;
-
-                //            buffer.Vertices.Add(new MeshVertex() { Position = new vec3(nodeP.x, nodeP.y, nodeP.z), Normal = normal.xyz });
-
-                //            continue;
-                //        }
-                //    }
-                //    //Debug.WriteLineIf(result != 0, $"{result} {nodePos.x},{nodePos.y},{nodePos.z}");
-
-                //    //var nodePos = QefSolveFromPoints4d(p, n, idx);
-                //    //var pos = DetectSharpFeature(this.options, p, n, idx);
-
-                //    //vec3 nodeNormal;
-                //    //vec3 nodePos;
-                //    //if (pos.HasValue)
-                //    //{
-                //    //    nodePos = new vec3(pos.Value.X, pos.Value.Y, pos.Value.Z);
-                //    //    nodeNormal = new vec3(0, 1, 0);
-                //    //}
-                //    //else
-                //    //{
-                //    var nodeNormal = vec3.Zero;
-                //    var centre = vec4.Zero;
-
-                //    for (int i = 0; i < idx; i++)
-                //    {
-                //        nodeNormal += n[i].xyz;
-                //        centre += p[i];
-                //    }
-
-                //    var nodePos = new vec3(centre.x, centre.y, centre.z) / idx;
-                //    nodeNormal *= (1f / (float)idx);
-                //    //}
-
-                //    vertexIndices[voxelId] = idxCounter++;
-
-                //    buffer.Vertices.Add(new MeshVertex() { Position = new vec3(nodePos.x, nodePos.y, nodePos.z), Normal = nodeNormal.xyz });
             }
         }
 
-        public static vec3 CalculateCubeQEF(vec4[] normals, vec4[] positions, int count, vec4 meanPoint)
-        {
-            //normals.Append(vec4.UnitX);
-            //positions.Append(meanPoint);
-            //normals.Append(vec4.UnitY);
-            //positions.Append(meanPoint);
-            //normals.Append(vec4.UnitZ);
-            //positions.Append(meanPoint);
+        //public static vec3 CalculateCubeQEF(vec4[] normals, vec4[] positions, int count, vec4 meanPoint)
+        //{
+        //    var n = new vec4[count];
+        //    var p = new vec4[count];
 
-            var n = new vec4[count];
-            var p = new vec4[count];
+        //    for (int i = 0; i < count; i++)
+        //    {
+        //        n[i] = normals[i];
+        //        p[i] = positions[i];
+        //    }
 
-            for (int i = 0; i < count; i++)
-            {
-                n[i] = normals[i];
-                p[i] = positions[i];
-            }
+        //    var A = DenseMatrix.OfRowArrays(n.Select(e => new[] { e.x, e.y, e.z }).ToArray());
+        //    var b = DenseVector.OfArray(normals.Zip(p.Select(v => v - meanPoint), vec4.Dot).ToArray());
 
-            var A = DenseMatrix.OfRowArrays(n.Select(e => new[] { e.x, e.y, e.z }).ToArray());
-            var b = DenseVector.OfArray(normals.Zip(p.Select(v => v - meanPoint), vec4.Dot).ToArray());
+        //    var pseudo = A.PseudoInverse();
+        //    var leastsquares = pseudo.Multiply(b);
 
-            var pseudo = A.PseudoInverse();
-            var leastsquares = pseudo.Multiply(b);
+        //    var result = leastsquares + DenseVector.OfArray(new[] { meanPoint.x, meanPoint.y, meanPoint.z });
 
-            var result = leastsquares + DenseVector.OfArray(new[] { meanPoint.x, meanPoint.y, meanPoint.z });
+        //    return new vec3(result[0], result[1], result[2]);
+        //}
 
-            return new vec3(result[0], result[1], result[2]);
-        }
+        //private vec3 SolveQEF(vec4[] p, vec4[] n, int idx)
+        //{
+        //    var error = -1f;
+        //    var position = new Vec3();
 
-        private vec3 SolveQEF(vec4[] p, vec4[] n, int idx)
-        {
-            var error = -1f;
-            var position = new Vec3();
+        //    if (idx > 2)
+        //    {
+        //        var ata = new Mat3(0);
+        //        var atb = new Vec3(0);
+        //        var accum = new Vec4(0);
 
-            if (idx > 2)
-            {
-                var ata = new Mat3(0);
-                var atb = new Vec3(0);
-                var accum = new Vec4(0);
+        //        for (int i = 0; i < idx; i++)
+        //        {
+        //            var nn = new Vec3(n[i].x, n[i].y, n[i].z);
+        //            var pp = new Vec3(p[i].x, p[i].y, p[i].z);
+        //            Qef.Add(nn, pp, ref ata, ref atb, ref accum);
+        //        }
 
-                for (int i = 0; i < idx; i++)
-                {
-                    var nn = new Vec3(n[i].x, n[i].y, n[i].z);
-                    var pp = new Vec3(p[i].x, p[i].y, p[i].z);
-                    Qef.Add(nn, pp, ref ata, ref atb, ref accum);
-                }
+        //        error = Qef.Solve(ata, atb, accum, out position);
+        //    }
 
-                error = Qef.Solve(ata, atb, accum, out position);
-            }
+        //    if (idx <= 2 || Math.Abs(error) > 0f)
+        //    {
+        //        var pos = vec3.Zero;
+        //        for (int i = 0; i < idx; i++)
+        //        {
+        //            pos += p[i].xyz;
+        //        }
 
-            if (idx <= 2 || Math.Abs(error) > 0f)
-            {
-                var pos = vec3.Zero;
-                for (int i = 0; i < idx; i++)
-                {
-                    pos += p[i].xyz;
-                }
+        //        position = new Vec3(pos.x, pos.y, pos.z) / idx;
+        //    }
 
-                position = new Vec3(pos.x, pos.y, pos.z) / idx;
-            }
-
-            return new vec3(position.x, position.y, position.z);
-        }
+        //    return new vec3(position.x, position.y, position.z);
+        //}
 
         private float QefSolveFromPoints4d(vec4[] positions, vec4[] normals, int count, out vec3 position)
         {
@@ -489,7 +368,7 @@
                 QefSimdAdd(positions[i], normals[i], ref ATA, ref ATb, ref pointAccum);
             }
 
-            log.WriteLine($"ATb:{ToString(ATb)}");
+            log?.WriteLine($"ATb:{ToString(ATb)}");
 
             return QefSimdSolve(ATA, ATb, pointAccum, out solvedPosition);
         }
@@ -515,14 +394,9 @@
         {
             var v = Vector128.Create(pointAccum.GetElement(3));
             var massPoint = Sse.Divide(pointAccum, v);
-            //var d = pointAccum.GetElement(3);
-            //var mp = new decimal[] { (decimal)pointAccum.GetElement(0) / d, (decimal)pointAccum.GetElement(1) / d, (decimal)pointAccum.GetElement(2) / d, (decimal)pointAccum.GetElement(3) / d };
-            //var massPoint = Vector128.Create((float)mp[0], (float)mp[1], (float)mp[2], (float)mp[3]);
 
-            log.WriteLine($"pointAccum: {pointAccum.GetElement(0):0.000000000},{pointAccum.GetElement(1):0.000000000},{pointAccum.GetElement(2):0.000000000},{pointAccum.GetElement(3):0.000000000}");
-            //log.WriteLine($"{v.GetElement(0):##.000000000},{v.GetElement(1):##.000000000},{v.GetElement(2):##.000000000},{v.GetElement(3):##.000000000}");
-            log.WriteLine($"MassPoint: {massPoint.GetElement(0):0.000000000},{massPoint.GetElement(1):0.000000000},{massPoint.GetElement(2):0.000000000},{massPoint.GetElement(3):0.000000000}");
-            //log.WriteLine($"MassPoint: {mp.X:##.000000000},{mp.Y:##.000000000},{mp.Z:##.000000000},{mp.W:##.000000000}");
+            log?.WriteLine($"pointAccum: {pointAccum.GetElement(0):0.000000000},{pointAccum.GetElement(1):0.000000000},{pointAccum.GetElement(2):0.000000000},{pointAccum.GetElement(3):0.000000000}");
+            log?.WriteLine($"MassPoint: {massPoint.GetElement(0):0.000000000},{massPoint.GetElement(1):0.000000000},{massPoint.GetElement(2):0.000000000},{massPoint.GetElement(3):0.000000000}");
 
             var p = Vec4MulM4x4(massPoint, ATA);
             p = Sse.Subtract(ATb, p);
@@ -531,7 +405,7 @@
 
             var error = QefSimdCalcError(ATA, solved, ATb);
 
-            log.WriteLine($"Solved: {solved.GetElement(0):0.000000000},{solved.GetElement(1):0.000000000},{solved.GetElement(2):0.000000000},{solved.GetElement(3):0.000000000}");
+            log?.WriteLine($"Solved: {solved.GetElement(0):0.000000000},{solved.GetElement(1):0.000000000},{solved.GetElement(2):0.000000000},{solved.GetElement(3):0.000000000}");
 
             solved = Sse.Add(solved, massPoint);
 
@@ -566,14 +440,9 @@
 
             var sigma = SvdSolveSym(ref V, ATA);
 
-            log.WriteLine($"Sigma: {sigma.GetElement(0):#0.000000000},{sigma.GetElement(1):#0.000000000},{sigma.GetElement(2):#0.000000000},{sigma.GetElement(3):#0.000000000}");
+            log?.WriteLine($"Sigma: {sigma.GetElement(0):#0.000000000},{sigma.GetElement(1):#0.000000000},{sigma.GetElement(2):#0.000000000},{sigma.GetElement(3):#0.000000000}");
 
             SvdPseudoInverse(out var Vinv, sigma, V);
-
-            //log.WriteLine($"Vinv[0]:{ToString(Vinv.row[0])}");
-            //log.WriteLine($"Vinv[1]:{ToString(Vinv.row[1])}");
-            //log.WriteLine($"Vinv[2]:{ToString(Vinv.row[2])}");
-            //log.WriteLine($"Vinv[3]:{ToString(Vinv.row[3])}");
 
             x = Vec4MulM4x4(ATb, Vinv);
         }
@@ -581,12 +450,12 @@
         private void SvdPseudoInverse(out Mat4x4 o, Vector128<float> sigma, Mat4x4 v)
         {
             var invDet = SvdInvDet(sigma);
-            log.WriteLine($"InvDet:{ToString(invDet)}");
+            log?.WriteLine($"InvDet:{ToString(invDet)}");
 
-            log.WriteLine($"v[0]:{ToString(v.row[0])}");
-            log.WriteLine($"v[1]:{ToString(v.row[1])}");
-            log.WriteLine($"v[2]:{ToString(v.row[2])}");
-            log.WriteLine($"v[3]:{ToString(v.row[3])}");
+            log?.WriteLine($"v[0]:{ToString(v.row[0])}");
+            log?.WriteLine($"v[1]:{ToString(v.row[1])}");
+            log?.WriteLine($"v[2]:{ToString(v.row[2])}");
+            log?.WriteLine($"v[3]:{ToString(v.row[3])}");
 
             var m = new Mat4x4();
             m.row[0] = Sse.Multiply(v.row[0], invDet);
@@ -594,10 +463,10 @@
             m.row[2] = Sse.Multiply(v.row[2], invDet);
             m.row[3] = Vector128.Create(0f);
 
-            log.WriteLine($"m[0]:{ToString(m.row[0])}");
-            log.WriteLine($"m[1]:{ToString(m.row[1])}");
-            log.WriteLine($"m[2]:{ToString(m.row[2])}");
-            log.WriteLine($"m[3]:{ToString(m.row[3])}");
+            log?.WriteLine($"m[0]:{ToString(m.row[0])}");
+            log?.WriteLine($"m[1]:{ToString(m.row[1])}");
+            log?.WriteLine($"m[2]:{ToString(m.row[2])}");
+            log?.WriteLine($"m[3]:{ToString(m.row[3])}");
 
             o = new Mat4x4();
             o.row[0] = o.row[0].WithElement(0, Vec4Dot(m.row[0], v.row[0]));
@@ -617,10 +486,10 @@
 
             o.row[3] = m.row[3];
 
-            log.WriteLine($"o[0]:{ToString(o.row[0])}");
-            log.WriteLine($"o[1]:{ToString(o.row[1])}");
-            log.WriteLine($"o[2]:{ToString(o.row[2])}");
-            log.WriteLine($"o[3]:{ToString(o.row[3])}");
+            log?.WriteLine($"o[0]:{ToString(o.row[0])}");
+            log?.WriteLine($"o[1]:{ToString(o.row[1])}");
+            log?.WriteLine($"o[2]:{ToString(o.row[2])}");
+            log?.WriteLine($"o[3]:{ToString(o.row[3])}");
         }
 
         private string ToString(Vector128<float> v)
@@ -691,25 +560,23 @@
 
         private void rotate_xy(ref Mat4x4 vtav, ref Mat4x4 v, float c, float s, int a, int b)
         {
-            //var simd_u = Vector128.Create(vtav.row[0].GetElement(3 - b), v.row[2].GetElement(a), v.row[1].GetElement(a), v.row[0].GetElement(a));
-            //var simd_v = Vector128.Create(vtav.row[1 - a].GetElement(2), v.row[2].GetElement(b), v.row[1].GetElement(b), v.row[0].GetElement(b));
             var simd_u = Vector128.Create(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
             var simd_v = Vector128.Create(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
 
-            log.WriteLine("rotate_xy");
-            log.WriteLine($"a:{a} b:{b}");
-            log.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine("rotate_xy");
+            log?.WriteLine($"a:{a} b:{b}");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
 
-            log.WriteLine($"v[0]: {v.row[0].GetElement(0):#0.000000000},{v.row[0].GetElement(1):#0.000000000},{v.row[0].GetElement(2):#0.000000000},{v.row[0].GetElement(3):#0.000000000}");
-            log.WriteLine($"v[1]: {v.row[1].GetElement(0):#0.000000000},{v.row[1].GetElement(1):#0.000000000},{v.row[1].GetElement(2):#0.000000000},{v.row[1].GetElement(3):#0.000000000}");
-            log.WriteLine($"v[2]: {v.row[2].GetElement(0):#0.000000000},{v.row[2].GetElement(1):#0.000000000},{v.row[2].GetElement(2):#0.000000000},{v.row[2].GetElement(3):#0.000000000}");
-            log.WriteLine($"v[3]: {v.row[3].GetElement(0):#0.000000000},{v.row[3].GetElement(1):#0.000000000},{v.row[3].GetElement(2):#0.000000000},{v.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"v[0]: {v.row[0].GetElement(0):#0.000000000},{v.row[0].GetElement(1):#0.000000000},{v.row[0].GetElement(2):#0.000000000},{v.row[0].GetElement(3):#0.000000000}");
+            log?.WriteLine($"v[1]: {v.row[1].GetElement(0):#0.000000000},{v.row[1].GetElement(1):#0.000000000},{v.row[1].GetElement(2):#0.000000000},{v.row[1].GetElement(3):#0.000000000}");
+            log?.WriteLine($"v[2]: {v.row[2].GetElement(0):#0.000000000},{v.row[2].GetElement(1):#0.000000000},{v.row[2].GetElement(2):#0.000000000},{v.row[2].GetElement(3):#0.000000000}");
+            log?.WriteLine($"v[3]: {v.row[3].GetElement(0):#0.000000000},{v.row[3].GetElement(1):#0.000000000},{v.row[3].GetElement(2):#0.000000000},{v.row[3].GetElement(3):#0.000000000}");
 
-            log.WriteLine($"simd_u: {simd_u.GetElement(0):#0.000000000},{simd_u.GetElement(1):#0.000000000},{simd_u.GetElement(2):#0.000000000},{simd_u.GetElement(3):#0.000000000}");
-            log.WriteLine($"simd_v: {simd_v.GetElement(0):#0.000000000},{simd_v.GetElement(1):#0.000000000},{simd_v.GetElement(2):#0.000000000},{simd_v.GetElement(3):#0.000000000}");
+            log?.WriteLine($"simd_u: {simd_u.GetElement(0):#0.000000000},{simd_u.GetElement(1):#0.000000000},{simd_u.GetElement(2):#0.000000000},{simd_u.GetElement(3):#0.000000000}");
+            log?.WriteLine($"simd_v: {simd_v.GetElement(0):#0.000000000},{simd_v.GetElement(1):#0.000000000},{simd_v.GetElement(2):#0.000000000},{simd_v.GetElement(3):#0.000000000}");
 
             var simd_c = Vector128.Create(c);
             var simd_s = Vector128.Create(s);
@@ -737,19 +604,19 @@
 
         private void rotateq_xy(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
         {
-            log.WriteLine("rotateq_xy");
-            log.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine("rotateq_xy");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
 
             var u = Vector128.Create(vtav.row[a].GetElement(a), vtav.row[a].GetElement(a), vtav.row[a].GetElement(a), 0f);
             var v = Vector128.Create(vtav.row[b].GetElement(b), vtav.row[b].GetElement(b), vtav.row[b].GetElement(b), 0f);
             var A = Vector128.Create(vtav.row[a].GetElement(b), vtav.row[a].GetElement(b), vtav.row[a].GetElement(b), 0f);
 
-            log.WriteLine($"u: {u.GetElement(0):#0.000000000},{u.GetElement(1):#0.000000000},{u.GetElement(2):#0.000000000},{u.GetElement(3):#0.000000000}");
-            log.WriteLine($"v: {v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}");
-            log.WriteLine($"A: {A.GetElement(0):#0.000000000},{A.GetElement(1):#0.000000000},{A.GetElement(2):#0.000000000},{A.GetElement(3):#0.000000000}");
+            log?.WriteLine($"u: {u.GetElement(0):#0.000000000},{u.GetElement(1):#0.000000000},{u.GetElement(2):#0.000000000},{u.GetElement(3):#0.000000000}");
+            log?.WriteLine($"v: {v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}");
+            log?.WriteLine($"A: {A.GetElement(0):#0.000000000},{A.GetElement(1):#0.000000000},{A.GetElement(2):#0.000000000},{A.GetElement(3):#0.000000000}");
 
             var twos = Vector128.Create(2f);
             var cc = Sse.Multiply(c, c);
@@ -827,8 +694,8 @@
             c_result = Sse.Shuffle(c_result, c_result, 27);
             s_result = Sse.Shuffle(s_result, s_result, 27);
 
-            log.WriteLine($"c_result:{c_result.GetElement(0):G9},{c_result.GetElement(1):G9},{c_result.GetElement(2):G9},{c_result.GetElement(3):G9}");
-            log.WriteLine($"s_result:{s_result.GetElement(0):G9},{s_result.GetElement(1):G9},{s_result.GetElement(2):G9},{s_result.GetElement(3):G9}");
+            log?.WriteLine($"c_result:{c_result.GetElement(0):G9},{c_result.GetElement(1):G9},{c_result.GetElement(2):G9},{c_result.GetElement(3):G9}");
+            log?.WriteLine($"s_result:{s_result.GetElement(0):G9},{s_result.GetElement(1):G9},{s_result.GetElement(2):G9},{s_result.GetElement(3):G9}");
         }
 
         private Vector128<float> Vec4MulM4x4(Vector128<float> a, Mat4x4 B)
@@ -847,137 +714,137 @@
             return ((byte)(((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0))));
         }
 
-        private Vector3 QefSolve(Matrix4x4 ata, Vector4 atb, Vector4 pointaccum)
-        {
-            var masspoint = new Vector3(pointaccum.X, pointaccum.Y, pointaccum.Z) / pointaccum.W;
+        //private Vector3 QefSolve(Matrix4x4 ata, Vector4 atb, Vector4 pointaccum)
+        //{
+        //    var masspoint = new Vector3(pointaccum.X, pointaccum.Y, pointaccum.Z) / pointaccum.W;
 
-            atb -= VmulSym(ata, masspoint);
-            var x = SolveAtaAtb(ata, atb);
+        //    atb -= VmulSym(ata, masspoint);
+        //    var x = SolveAtaAtb(ata, atb);
 
-            return new Vector3(x.X, x.Y, x.Z) + masspoint;
-        }
+        //    return new Vector3(x.X, x.Y, x.Z) + masspoint;
+        //}
 
-        private Vector4 SolveAtaAtb(Matrix4x4 ata, Vector4 atb)
-        {
-            var V = new Mat3(1.0f);
-            Vector3 sigma = SolveSym(ata, ref V);
+        //private Vector4 SolveAtaAtb(Matrix4x4 ata, Vector4 atb)
+        //{
+        //    var V = new Mat3(1.0f);
+        //    Vector3 sigma = SolveSym(ata, ref V);
 
-            // A = UEV^T; U = A / (E*V^T)
-            var Vinv = Pseudoinverse(sigma, V);
+        //    // A = UEV^T; U = A / (E*V^T)
+        //    var Vinv = Pseudoinverse(sigma, V);
 
-            return Vector4.Transform(atb, Vinv);
-        }
+        //    return Vector4.Transform(atb, Vinv);
+        //}
 
-        private Matrix4x4 Pseudoinverse(Vector3 sigma, Mat3 v)
-        {
-            throw new NotImplementedException();
-        }
+        //private Matrix4x4 Pseudoinverse(Vector3 sigma, Mat3 v)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
-        private Vector3 SolveSym(Matrix4x4 a, ref Mat3 v)
-        {
-            // assuming that A is symmetric: can optimize all operations for 
-            // the upper right triagonal
-            var vtav = a;
+        //private Vector3 SolveSym(Matrix4x4 a, ref Mat3 v)
+        //{
+        //    // assuming that A is symmetric: can optimize all operations for 
+        //    // the upper right triagonal
+        //    var vtav = a;
 
-            // assuming V is identity: you can also pass a matrix the rotations
-            // should be applied to
-            // U is not computed
-            for (int i = 0; i < 5; ++i)
-            {
-                Rotate(ref vtav, ref v, 0, 1);
-                Rotate(ref vtav, ref v, 0, 2);
-                Rotate(ref vtav, ref v, 1, 2);
-            }
+        //    // assuming V is identity: you can also pass a matrix the rotations
+        //    // should be applied to
+        //    // U is not computed
+        //    for (int i = 0; i < 5; ++i)
+        //    {
+        //        Rotate(ref vtav, ref v, 0, 1);
+        //        Rotate(ref vtav, ref v, 0, 2);
+        //        Rotate(ref vtav, ref v, 1, 2);
+        //    }
 
-            return new Vector3(vtav.M11, vtav.M22, vtav.M33);
-        }
+        //    return new Vector3(vtav.M11, vtav.M22, vtav.M33);
+        //}
 
-        private void Rotate(ref Matrix4x4 vtav, ref Mat3 v1, int v2, int v3)
-        {
-            throw new NotImplementedException();
-        }
+        //private void Rotate(ref Matrix4x4 vtav, ref Mat3 v1, int v2, int v3)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
-        private Vector4 VmulSym(Matrix4x4 a, Vector3 v)
-        {
-            return new Vector4(
-                Vector3.Dot(new Vector3(a.M11, a.M12, a.M13), v),
-                a.M12 * v.X + a.M22 * v.Y + a.M23 * v.Z,
-                a.M13 * v.X + a.M23 * v.Y + a.M33 * v.Z,
-                0f);
-        }
+        //private Vector4 VmulSym(Matrix4x4 a, Vector3 v)
+        //{
+        //    return new Vector4(
+        //        Vector3.Dot(new Vector3(a.M11, a.M12, a.M13), v),
+        //        a.M12 * v.X + a.M22 * v.Y + a.M23 * v.Z,
+        //        a.M13 * v.X + a.M23 * v.Y + a.M33 * v.Z,
+        //        0f);
+        //}
 
-        private void QefAdd(Vector4 n, Vector4 p, ref Matrix4x4 ata, ref Vector4 atb, ref Vector4 pointaccum)
-        {
-            ata.M11 += n.X * n.X;
-            ata.M12 += n.X * n.Y;
-            ata.M13 += n.X * n.Z;
-            ata.M22 += n.Y * n.Y;
-            ata.M23 += n.Y * n.Z;
-            ata.M33 += n.Z * n.Z;
+        //private void QefAdd(Vector4 n, Vector4 p, ref Matrix4x4 ata, ref Vector4 atb, ref Vector4 pointaccum)
+        //{
+        //    ata.M11 += n.X * n.X;
+        //    ata.M12 += n.X * n.Y;
+        //    ata.M13 += n.X * n.Z;
+        //    ata.M22 += n.Y * n.Y;
+        //    ata.M23 += n.Y * n.Z;
+        //    ata.M33 += n.Z * n.Z;
 
-            var b = Vector4.Dot(p, n);
-            atb += n * b;
-            pointaccum += p;
-        }
+        //    var b = Vector4.Dot(p, n);
+        //    atb += n * b;
+        //    pointaccum += p;
+        //}
 
-        public static Vector3 CalculateCubeQEF(Vector3[] normals, Vector3[] positions, Vector3 meanPoint)
-        {
-            var A = DenseMatrix.OfRowArrays(normals.Select(e => new[] { e.X, e.Y, e.Z }).ToArray());
-            var b = DenseVector.OfArray(normals.Zip(positions.Select(p => p - meanPoint), Vector3.Dot).ToArray());
+        //public static Vector3 CalculateCubeQEF(Vector3[] normals, Vector3[] positions, Vector3 meanPoint)
+        //{
+        //    var A = DenseMatrix.OfRowArrays(normals.Select(e => new[] { e.X, e.Y, e.Z }).ToArray());
+        //    var b = DenseVector.OfArray(normals.Zip(positions.Select(p => p - meanPoint), Vector3.Dot).ToArray());
 
-            var pseudo = A.PseudoInverse();
-            var leastsquares = pseudo.Multiply(b);
+        //    var pseudo = A.PseudoInverse();
+        //    var leastsquares = pseudo.Multiply(b);
 
-            //return leastsquares + DenseVector.OfArray(new[] { meanPoint.X, meanPoint.Y, meanPoint.Z });
+        //    //return leastsquares + DenseVector.OfArray(new[] { meanPoint.X, meanPoint.Y, meanPoint.Z });
 
-            return new Vector3(leastsquares[0] + meanPoint.X, leastsquares[1] + meanPoint.Y, leastsquares[2] + meanPoint.Z);
-        }
+        //    return new Vector3(leastsquares[0] + meanPoint.X, leastsquares[1] + meanPoint.Y, leastsquares[2] + meanPoint.Z);
+        //}
 
-        private Vector3? DetectSharpFeature(MeshSimplificationOptions config, vec4[] p, vec4[] n, int count)
-        {
-            var minimumAngle = 1.0f;
-            var sharpA = 0;
-            var sharpB = 0;
+        //private Vector3? DetectSharpFeature(MeshSimplificationOptions config, vec4[] p, vec4[] n, int count)
+        //{
+        //    var minimumAngle = 1.0f;
+        //    var sharpA = 0;
+        //    var sharpB = 0;
 
-            for (var j = 0; j < count - 1; j++)
-            {
-                for (var k = j + 1; k < count; k++)
-                {
-                    var n0 = n[j];
-                    var n1 = n[k];
+        //    for (var j = 0; j < count - 1; j++)
+        //    {
+        //        for (var k = j + 1; k < count; k++)
+        //        {
+        //            var n0 = n[j];
+        //            var n1 = n[k];
 
-                    var angle = Math.Abs(vec4.Dot(n0, n1));
+        //            var angle = Math.Abs(vec4.Dot(n0, n1));
 
-                    if (angle < minimumAngle)
-                    {
-                        minimumAngle = angle;
-                        sharpA = j;
-                        sharpB = k;
-                    }
-                }
-            }
+        //            if (angle < minimumAngle)
+        //            {
+        //                minimumAngle = angle;
+        //                sharpA = j;
+        //                sharpB = k;
+        //            }
+        //        }
+        //    }
 
-            float maxSharpAngle = 0;
-            if (minimumAngle < Math.Abs(config.MinAngleCosine))
-            {
-                var crossN = vec3.Cross(new vec3(n[sharpB]), new vec3(n[sharpA]));
+        //    float maxSharpAngle = 0;
+        //    if (minimumAngle < Math.Abs(config.MinAngleCosine))
+        //    {
+        //        var crossN = vec3.Cross(new vec3(n[sharpB]), new vec3(n[sharpA]));
 
-                for (var j = 0; j < count; j++)
-                {
-                    var d = Math.Abs(vec3.Dot(n[j].xyz, crossN));
-                    if (d > maxSharpAngle)
-                    {
-                        maxSharpAngle = d;
-                    }
-                }
+        //        for (var j = 0; j < count; j++)
+        //        {
+        //            var d = Math.Abs(vec3.Dot(n[j].xyz, crossN));
+        //            if (d > maxSharpAngle)
+        //            {
+        //                maxSharpAngle = d;
+        //            }
+        //        }
 
-                var corner = (maxSharpAngle < config.MinAngleCosine) ? false : true;
-                var junction = this.CalculateJunction(p, n, count, corner);
-                return junction;
-            }
+        //        var corner = (maxSharpAngle < config.MinAngleCosine) ? false : true;
+        //        var junction = this.CalculateJunction(p, n, count, corner);
+        //        return junction;
+        //    }
 
-            return null;
-        }
+        //    return null;
+        //}
 
         private void GenerateTriangles(VoxelInfo voxelInfo, ref MeshBuffer buffer)
         {
@@ -1035,34 +902,34 @@
         /// <param name="component"></param>
         /// <param name="corner"></param>
         /// <returns></returns>
-        private Vector3? CalculateJunction(IList<vec4> vertices, IList<vec4> norms, int count, bool corner)
-        {
-            var normals = new double[count * 3];
-            var dots = new double[count];
+        //private Vector3? CalculateJunction(IList<vec4> vertices, IList<vec4> norms, int count, bool corner)
+        //{
+        //    var normals = new double[count * 3];
+        //    var dots = new double[count];
 
-            for (var i = 0; i < count; i++)
-            {
-                normals[count * 0 + i] = norms[i].x;
-                normals[count * 1 + i] = norms[i].y;
-                normals[count * 2 + i] = norms[i].z;
+        //    for (var i = 0; i < count; i++)
+        //    {
+        //        normals[count * 0 + i] = norms[i].x;
+        //        normals[count * 1 + i] = norms[i].y;
+        //        normals[count * 2 + i] = norms[i].z;
 
-                // M* dot(location, normal)
-                dots[i] = vertices[i].x * norms[i].x +
-                          vertices[i].y * norms[i].y +
-                          vertices[i].z * norms[i].z;
-            }
+        //        // M* dot(location, normal)
+        //        dots[i] = vertices[i].x * norms[i].x +
+        //                  vertices[i].y * norms[i].y +
+        //                  vertices[i].z * norms[i].z;
+        //    }
 
-            var A = Matrix<double>.Build.Dense(count, 3, normals);
-            var b = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(dots);
+        //    var A = Matrix<double>.Build.Dense(count, 3, normals);
+        //    var b = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(dots);
 
-            var x = A.Transpose().Multiply(A).Inverse().Multiply(A.Transpose().Multiply(b));
-            if (double.IsNaN(x[0]) || double.IsNaN(x[1]) || double.IsNaN(x[2]))
-            {
-                return null;
-            }
+        //    var x = A.Transpose().Multiply(A).Inverse().Multiply(A.Transpose().Multiply(b));
+        //    if (double.IsNaN(x[0]) || double.IsNaN(x[1]) || double.IsNaN(x[2]))
+        //    {
+        //        return null;
+        //    }
 
-            return new Vector3((float)x[0], (float)x[1], (float)x[2]);
-        }
+        //    return new Vector3((float)x[0], (float)x[1], (float)x[2]);
+        //}
 
         private VoxelInfo FindActiveVoxels(SuperPrimitiveConfig config, bool enableLog = false)
         {
@@ -1094,7 +961,7 @@
                             var t = FindIntersection(config, p, q);
                             var pos = new vec4(glm.Mix(new vec3(p), new vec3(q), new vec3(t)), 1f);
 
-                            if (enableLog)
+                            if (enableLog == true && log != null)
                                 log.WriteLine($"P:{pDensity:G9} Q:{qDensity:G9} T:{t:G9} POS:{pos.x:G9},{pos.y:G9},{pos.z:G9},{pos.w:G9}");
 
                             const float H = 0.001f;
@@ -1107,7 +974,7 @@
                             var d4 = Density(config, pos + new vec4(0f, 0f, H, 0f));
                             var d5 = Density(config, pos - new vec4(0f, 0f, H, 0f));
 
-                            if (enableLog)
+                            if (enableLog == true && log != null)
                                 log.WriteLine($"{d0.ToString("G9").ToLowerInvariant()},{d1.ToString("G9").ToLowerInvariant()},{d2.ToString("G9").ToLowerInvariant()},{d3.ToString("G9").ToLowerInvariant()},{d4.ToString("G9").ToLowerInvariant()},{d5.ToString("G9").ToLowerInvariant()}");
 
                             var n = new vec4(
@@ -1121,7 +988,7 @@
                             var l = (1f / (float)Math.Sqrt(vec4.Dot(n, n)));
                             var normal = n * l;
 
-                            if (enableLog)
+                            if (enableLog == true && log != null)
                             {
                                 log.WriteLine($"L:{n.Length:g9}");
                                 log.WriteLine($"N:{n.x:g9},{n.y:g9},{n.z:g9},{n.w:g9}");
@@ -1133,7 +1000,7 @@
                             var code = EncodeAxisUniqueID(axis, x, y, z);
                             info.Edges.Add(code, edgeInfo);
 
-                            if (enableLog)
+                            if (enableLog == true && log != null)
                                 log.WriteLine($"Edge:{code}");
 
                             var edgeNodes = EdgeNodeOffsets[axis];
@@ -1143,7 +1010,7 @@
                                 var nodeIdxPos = idxPos - edgeNodes[i];
                                 var nodeID = EncodeVoxelUniqueID(nodeIdxPos);
                                 info.Voxels.Add(nodeID);
-                                if (enableLog)
+                                if (enableLog == true && log != null)
                                     log.WriteLine($"Node:{nodeID}");
                             }
                         }
@@ -1154,12 +1021,12 @@
             return info;
         }
 
-        private float FindIntersection(float d0, float d1)
-        {
-            var t = -d0 / (d1 - d0);
+        //private float FindIntersection(float d0, float d1)
+        //{
+        //    var t = -d0 / (d1 - d0);
 
-            return t;
-        }
+        //    return t;
+        //}
 
         private uint EncodeVoxelUniqueID(ivec4 idxPos, bool logEnabled = false)
         {
@@ -1167,7 +1034,7 @@
             {
                 var i = idxPos.x | (idxPos.y << 10) | (idxPos.z << 20);
 
-                if (logEnabled)
+                if (logEnabled == true && log != null)
                     log.WriteLine($"{idxPos.x},{idxPos.y},{idxPos.z},{idxPos.w} -> {i}");
 
                 return (uint)i;
@@ -1268,7 +1135,7 @@
 
             Graphics.DeleteProgram(this.shader);
 
-            this.log.Dispose();
+            this.log?.Dispose();
         }
 
         public void Update(double deltaTime)
@@ -1291,19 +1158,19 @@
             DrawFrame(this.shader, this.Meshes, position, -dir, viewerOpts.DrawWireframe, viewerOpts.MeshScale);
         }
 
-        struct rubbish
-        {
-            public float x;
-            public float y;
-            public float z;
+        //struct rubbish
+        //{
+        //    public float x;
+        //    public float y;
+        //    public float z;
 
-            public rubbish(float x, float y, float z)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-            }
-        }
+        //    public rubbish(float x, float y, float z)
+        //    {
+        //        this.x = x;
+        //        this.y = y;
+        //        this.z = z;
+        //    }
+        //}
 
         float[] g_vertex_buffer_data = new[]
             {
@@ -1322,93 +1189,92 @@
         {
             0, 1, 2
         };
-        private Log log;
 
-        private void TestFrame(Mesh mesh)
-        {
-            var VertexArrayID = GL.GenVertexArray();
-            GL.BindVertexArray(VertexArrayID);
+        //private void TestFrame(Mesh mesh)
+        //{
+        //    var VertexArrayID = GL.GenVertexArray();
+        //    GL.BindVertexArray(VertexArrayID);
 
-            // Generate 1 buffer, put the resulting identifier in vertexbuffer
-            var vertexbuffer = GL.GenBuffer();
-            // The following commands will talk about our 'vertexbuffer' buffer
-            GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
-            // Give our vertices to OpenGL.
-            //GL.BufferData(BufferTargetARB.ArrayBuffer, g_vertex_buffer_data, BufferUsageARB.StaticDraw);
-            GL.BufferData(BufferTargetARB.ArrayBuffer, meshBuffer.Vertices.ToArray(), BufferUsageARB.StaticDraw);
+        //    // Generate 1 buffer, put the resulting identifier in vertexbuffer
+        //    var vertexbuffer = GL.GenBuffer();
+        //    // The following commands will talk about our 'vertexbuffer' buffer
+        //    GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
+        //    // Give our vertices to OpenGL.
+        //    //GL.BufferData(BufferTargetARB.ArrayBuffer, g_vertex_buffer_data, BufferUsageARB.StaticDraw);
+        //    GL.BufferData(BufferTargetARB.ArrayBuffer, meshBuffer.Vertices.ToArray(), BufferUsageARB.StaticDraw);
 
-            // 1st attribute buffer : vertices
-            GL.EnableVertexAttribArray(0);
-            GL.EnableVertexAttribArray(1);
-            GL.EnableVertexAttribArray(2);
+        //    // 1st attribute buffer : vertices
+        //    GL.EnableVertexAttribArray(0);
+        //    GL.EnableVertexAttribArray(1);
+        //    GL.EnableVertexAttribArray(2);
 
-            GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
-            //GL.BindBuffer(BufferTargetARB.ArrayBuffer, mesh.VertexBuffer);
+        //    GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
+        //    //GL.BindBuffer(BufferTargetARB.ArrayBuffer, mesh.VertexBuffer);
 
-            GL.VertexAttribPointer(
-               0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-               3,                  // size
-               VertexAttribPointerType.Float,           // type
-               false,           // normalized?
-               36,                  // stride
-               0            // array buffer offset
-            );
+        //    GL.VertexAttribPointer(
+        //       0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+        //       3,                  // size
+        //       VertexAttribPointerType.Float,           // type
+        //       false,           // normalized?
+        //       36,                  // stride
+        //       0            // array buffer offset
+        //    );
 
-            GL.VertexAttribPointer(
-               1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-               3,                  // size
-               VertexAttribPointerType.Float,           // type
-               false,           // normalized?
-               36,                  // stride
-               12            // array buffer offset
-            );
+        //    GL.VertexAttribPointer(
+        //       1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+        //       3,                  // size
+        //       VertexAttribPointerType.Float,           // type
+        //       false,           // normalized?
+        //       36,                  // stride
+        //       12            // array buffer offset
+        //    );
 
-            GL.VertexAttribPointer(
-               2,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-               3,                  // size
-               VertexAttribPointerType.Float,           // type
-               false,           // normalized?
-               36,                  // stride
-               24            // array buffer offset
-            );
+        //    GL.VertexAttribPointer(
+        //       2,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+        //       3,                  // size
+        //       VertexAttribPointerType.Float,           // type
+        //       false,           // normalized?
+        //       36,                  // stride
+        //       24            // array buffer offset
+        //    );
 
-            var elementBuffer = GL.GenBuffer();
-            GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, elementBuffer);
-            GL.BufferData(BufferTargetARB.ElementArrayBuffer, indices, BufferUsageARB.StaticDraw);
+        //    var elementBuffer = GL.GenBuffer();
+        //    GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, elementBuffer);
+        //    GL.BufferData(BufferTargetARB.ElementArrayBuffer, indices, BufferUsageARB.StaticDraw);
 
-            var projection = mat4.Perspective(glm.Radians(45f), 1920f / 1080f, 0.1f, 500f);
-            var view = mat4.LookAt(new vec3(4, 3, 3), vec3.Zero, vec3.UnitY);
-            var model = mat4.Identity;
-            var mvp = projection * view * model;
+        //    var projection = mat4.Perspective(glm.Radians(45f), 1920f / 1080f, 0.1f, 500f);
+        //    var view = mat4.LookAt(new vec3(4, 3, 3), vec3.Zero, vec3.UnitY);
+        //    var model = mat4.Identity;
+        //    var mvp = projection * view * model;
 
-            GL.UseProgram(this.shader);
+        //    GL.UseProgram(this.shader);
 
-            var mat = GL.GetUniformLocation(this.shader, "MVP");
-            CheckGLError();
+        //    var mat = GL.GetUniformLocation(this.shader, "MVP");
+        //    CheckGLError();
 
-            var m4 = new OpenTK.Mathematics.Matrix4(mvp.m00, mvp.m01, mvp.m02, mvp.m03, mvp.m10, mvp.m11, mvp.m12, mvp.m13, mvp.m20, mvp.m21, mvp.m22, mvp.m23, mvp.m30, mvp.m31, mvp.m32, mvp.m33);
-            GL.UniformMatrix4f(mat, false, m4);
-            CheckGLError();
+        //    var m4 = new OpenTK.Mathematics.Matrix4(mvp.m00, mvp.m01, mvp.m02, mvp.m03, mvp.m10, mvp.m11, mvp.m12, mvp.m13, mvp.m20, mvp.m21, mvp.m22, mvp.m23, mvp.m30, mvp.m31, mvp.m32, mvp.m33);
+        //    GL.UniformMatrix4f(mat, false, m4);
+        //    CheckGLError();
 
-            var useColour = GL.GetUniformLocation(this.shader, "useUniformColour");
-            CheckGLError();
-            GL.Uniform1i(useColour, 0);
-            CheckGLError();
+        //    var useColour = GL.GetUniformLocation(this.shader, "useUniformColour");
+        //    CheckGLError();
+        //    GL.Uniform1i(useColour, 0);
+        //    CheckGLError();
 
-            //GL.BindVertexArray(mesh.VertexArrayObj);
-            //GL.DrawElements(PrimitiveType.Triangles, mesh.NumIndices, DrawElementsType.UnsignedInt, 0);
+        //    //GL.BindVertexArray(mesh.VertexArrayObj);
+        //    //GL.DrawElements(PrimitiveType.Triangles, mesh.NumIndices, DrawElementsType.UnsignedInt, 0);
 
-            // Draw the triangle !
-            //GL.DrawArrays(PrimitiveType.Triangles, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-            GL.DrawElements(PrimitiveType.Triangles, indices.Length, DrawElementsType.UnsignedInt, 0);
+        //    // Draw the triangle !
+        //    //GL.DrawArrays(PrimitiveType.Triangles, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
+        //    GL.DrawElements(PrimitiveType.Triangles, indices.Length, DrawElementsType.UnsignedInt, 0);
 
-            GL.DisableVertexAttribArray(2);
-            GL.DisableVertexAttribArray(1);
-            GL.DisableVertexAttribArray(0);
+        //    GL.DisableVertexAttribArray(2);
+        //    GL.DisableVertexAttribArray(1);
+        //    GL.DisableVertexAttribArray(0);
 
-            GL.DeleteVertexArray(VertexArrayID);
-            GL.DeleteBuffer(elementBuffer);
-        }
+        //    GL.DeleteVertexArray(VertexArrayID);
+        //    GL.DeleteBuffer(elementBuffer);
+        //}
 
         private void DrawFrame(ProgramHandle shader, List<Mesh> meshes, vec3 position, vec3 forward, bool drawWireframe, float meshScale)
         {
