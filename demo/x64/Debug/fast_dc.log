@@ -1,6 +1,0 @@
-﻿  fast_dc.cpp
-  ng_mesh_simplify.cpp
-  main.cpp
-W:\github\nickgildea-fast_dual_contouring\demo\main.cpp(354,27): warning C4996: 'strerror': This function or variable may be unsafe. Consider using strerror_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  Generating Code...
-  fast_dc.vcxproj -> W:\github\nickgildea-fast_dual_contouring\demo\x64\Debug\fast_dc.exe
