@@ -346,13 +346,9 @@
             return error;
         }
 
-        [StructLayout(LayoutKind.Explicit, Pack = 1)]
         struct Mat4x4
         {
-            [FieldOffset(0)]
-            public float[,] m = new float[4, 4];
-            [FieldOffset(0)]
-            public Vector128<float>[] row = new Vector128<float>[4];
+            public Vector4[] row = new Vector4[4];
 
             public Mat4x4()
             {
@@ -360,15 +356,60 @@
 
             public Matrix4x4 AsMatrix4x4()
             {
-                var r0 = this.row[0];
-                var r1 = this.row[1];
-                var r2 = this.row[2];
-                var r3 = this.row[3];
-                return  new Matrix4x4(
-                    r0.GetElement(0), r0.GetElement(1), r0.GetElement(2), r0.GetElement(3),
-                    r1.GetElement(0), r1.GetElement(1), r1.GetElement(2), r1.GetElement(3),
-                    r2.GetElement(0), r2.GetElement(1), r2.GetElement(2), r2.GetElement(3),
-                    r3.GetElement(0), r3.GetElement(1), r3.GetElement(2), r3.GetElement(3));
+                return new Matrix4x4(
+                    row[0].X, row[0].Y, row[0].Z, row[0].W,
+                    row[1].X, row[1].Y, row[1].Z, row[1].W,
+                    row[2].X, row[2].Y, row[2].Z, row[2].W,
+                    row[3].X, row[3].Y, row[3].Z, row[3].W);
+            }
+
+            public float this[int row, int column]
+            {
+                get
+                {
+                    switch (column)
+                    {
+                        case 0:
+                            return this.row[row].X;
+
+                        case 1:
+                            return this.row[row].Y;
+
+                        case 2:
+                            return this.row[row].Z;
+
+                        case 3:
+                            return this.row[row].W;
+
+                        default:
+                            throw new IndexOutOfRangeException();
+                    }
+                }
+
+                set
+                {
+                    switch (column)
+                    {
+                        case 0:
+                            this.row[row].X = value;
+                            return;
+
+                        case 1:
+                            this.row[row].Y = value;
+                            return;
+
+                        case 2:
+                            this.row[row].Z = value;
+                            return;
+
+                        case 3:
+                            this.row[row].W = value;
+                            return;
+
+                        default:
+                            throw new IndexOutOfRangeException();
+                    }
+                }
             }
         }
 
@@ -378,10 +419,6 @@
             var ATb = new Vector4();
 
             var ATA = new Mat4x4();
-            ATA.row[0] = Vector128.Create(0f);
-            ATA.row[1] = Vector128.Create(0f);
-            ATA.row[2] = Vector128.Create(0f);
-            ATA.row[3] = Vector128.Create(0f);
 
             for (int i = 0; i < count && i < 12; i++)
             {
@@ -399,9 +436,9 @@
             var nY = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(1, 1, 1, 1)), n);
             var nZ = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(2, 2, 2, 2)), n);
 
-            ATA.row[0] = Sse.Add(ATA.row[0], nX);
-            ATA.row[1] = Sse.Add(ATA.row[1], nY);
-            ATA.row[2] = Sse.Add(ATA.row[2], nZ);
+            ATA.row[0] += nX.AsVector4();
+            ATA.row[1] += nY.AsVector4();
+            ATA.row[2] += nZ.AsVector4();
 
             var d = Dot(p, n);
             var x = Vector128.Create(d, d, d, 0f);
@@ -412,16 +449,10 @@
 
         private float QefSimdSolve(Matrix4x4 ATA, Vector4 ATb, Vector4 pointAccum, out Vector4 solved)
         {
-            //var v = Vector128.Create(pointAccum.GetElement(3));
-            //var mp = Sse.Divide(pointAccum, v);
-
             var massPoint = pointAccum / pointAccum.W;
 
             log?.WriteLine($"pointAccum: {pointAccum.X:0.000000000},{pointAccum.Y:0.000000000},{pointAccum.Z:0.000000000},{pointAccum.W:0.000000000}");
             log?.WriteLine($"MassPoint: {massPoint.X:0.000000000},{massPoint.Y:0.000000000},{massPoint.Z:0.000000000},{massPoint.W:0.000000000}");
-
-            //var p = Vec4MulM4x4(massPoint.AsVector128(), ATA);
-            //p = Sse.Subtract(ATb, p);
 
             var p = ATb - Vector4.Transform(massPoint, ATA);
 
@@ -442,16 +473,6 @@
             return Vector4.Dot(tmp, tmp);
         }
 
-        //private static float Vec4Dot(Vector128<float> a, Vector128<float> b)
-        //{
-        //    var mul = Sse.Multiply(a, b);
-        //    var s0 = Sse.Shuffle(mul, mul, MM_Shuffle(2, 3, 0, 1));
-        //    var add = Sse.Add(mul, s0);
-        //    var s1 = Sse.Shuffle(add, add, MM_Shuffle(0, 1, 2, 3));
-        //    var res = Sse.Add(add, s1);
-        //    return res.ToScalar();
-        //}
-
         private static float Dot(Vector128<float> a, Vector128<float> b)
         {
             var v0 = a.AsVector4();
@@ -467,10 +488,6 @@
                 0, 0, 1f, 0,
                 0, 0, 0, 0
                 );
-            //V.row[0] = Vector128.Create(1f, 0f, 0f, 0f);
-            //V.row[1] = Vector128.Create(0f, 1f, 0f, 0f);
-            //V.row[2] = Vector128.Create(0f, 0f, 1f, 0f);
-            //V.row[3] = Vector128.Create(0f, 0f, 0f, 0f);
 
             var sigma = SvdSolveSym(ref V, ATA);
 
@@ -506,15 +523,19 @@
             var v2 = Vector128.Create(v.M31, v.M32, v.M33, v.M34);
 
             var m = new Mat4x4();
-            m.row[0] = Sse.Multiply(v0, invDet);
-            m.row[1] = Sse.Multiply(v1, invDet);
-            m.row[2] = Sse.Multiply(v2, invDet);
-            m.row[3] = Vector128.Create(0f);
+            //m.row[0] = Sse.Multiply(v0, invDet);
+            //m.row[1] = Sse.Multiply(v1, invDet);
+            //m.row[2] = Sse.Multiply(v2, invDet);
+            //m.row[3] = Vector128.Create(0f);
+            m.row[0] = v0.AsVector4() * invDet.AsVector4();
+            m.row[1] = v1.AsVector4() * invDet.AsVector4();
+            m.row[2] = v2.AsVector4() * invDet.AsVector4();
+            m.row[3] = new Vector4();
 
-            log?.WriteLine($"m[0]:{ToString(m.row[0])}");
-            log?.WriteLine($"m[1]:{ToString(m.row[1])}");
-            log?.WriteLine($"m[2]:{ToString(m.row[2])}");
-            log?.WriteLine($"m[3]:{ToString(m.row[3])}");
+            log?.WriteLine($"m[0]:{ToString(m.row[0].AsVector128())}");
+            log?.WriteLine($"m[1]:{ToString(m.row[1].AsVector128())}");
+            log?.WriteLine($"m[2]:{ToString(m.row[2].AsVector128())}");
+            log?.WriteLine($"m[3]:{ToString(m.row[3].AsVector128())}");
 
             o = new Matrix4x4
             {
@@ -522,33 +543,33 @@
                 //o.row[0] = o.row[0].WithElement(1, Dot(m.row[1], v.row[0]));
                 //o.row[0] = o.row[0].WithElement(2, Dot(m.row[2], v.row[0]));
                 //o.row[0] = o.row[0].WithElement(3, 0);
-                M11 = Dot(m.row[0], v0),
-                M12 = Dot(m.row[1], v0),
-                M13 = Dot(m.row[2], v0),
+                M11 = Dot(m.row[0].AsVector128(), v0),
+                M12 = Dot(m.row[1].AsVector128(), v0),
+                M13 = Dot(m.row[2].AsVector128(), v0),
                 M14 = 0f,
 
                 //o.row[1] = o.row[1].WithElement(0, Dot(m.row[0], v.row[1]));
                 //o.row[1] = o.row[1].WithElement(1, Dot(m.row[1], v.row[1]));
                 //o.row[1] = o.row[1].WithElement(2, Dot(m.row[2], v.row[1]));
                 //o.row[1] = o.row[1].WithElement(3, 0);
-                M21 = Dot(m.row[0], v1),
-                M22 = Dot(m.row[1], v1),
-                M23 = Dot(m.row[2], v1),
+                M21 = Dot(m.row[0].AsVector128(), v1),
+                M22 = Dot(m.row[1].AsVector128(), v1),
+                M23 = Dot(m.row[2].AsVector128(), v1),
                 M24 = 0f,
 
                 //o.row[2] = o.row[2].WithElement(0, Dot(m.row[0], v.row[2]));
                 //o.row[2] = o.row[2].WithElement(1, Dot(m.row[1], v.row[2]));
                 //o.row[2] = o.row[2].WithElement(2, Dot(m.row[2], v.row[2]));
                 //o.row[2] = o.row[2].WithElement(3, 0);
-                M31 = Dot(m.row[0], v2),
-                M32 = Dot(m.row[1], v2),
-                M33 = Dot(m.row[2], v2),
+                M31 = Dot(m.row[0].AsVector128(), v2),
+                M32 = Dot(m.row[1].AsVector128(), v2),
+                M33 = Dot(m.row[2].AsVector128(), v2),
                 M34 = 0f,
 
-                M41 = m.row[3].GetElement(0),
-                M42 = m.row[3].GetElement(1),
-                M43 = m.row[3].GetElement(2),
-                M44 = m.row[3].GetElement(3)
+                M41 = m.row[3].X,
+                M42 = m.row[3].Y,
+                M43 = m.row[3].Z,
+                M44 = m.row[3].W
             };
 
             log?.WriteLine($"o[0]:{o.M11:#0.000000000},{o.M12:#0.000000000},{o.M13:#0.000000000},{o.M14:#0.000000000}");
@@ -586,82 +607,228 @@
         private Vector4 SvdSolveSym(ref Matrix4x4 v, Matrix4x4 a)
         {
             var vtav = new Mat4x4();
-            vtav.row[0] = Vector128.Create(a.M11, a.M12, a.M13, a.M14);
-            vtav.row[1] = Vector128.Create(a.M21, a.M22, a.M23, a.M24);
-            vtav.row[2] = Vector128.Create(a.M31, a.M32, a.M33, a.M34);
-            vtav.row[3] = Vector128.Create(a.M41, a.M42, a.M43, a.M44);
+            vtav.row[0] = Vector128.Create(a.M11, a.M12, a.M13, a.M14).AsVector4();
+            vtav.row[1] = Vector128.Create(a.M21, a.M22, a.M23, a.M24).AsVector4();
+            vtav.row[2] = Vector128.Create(a.M31, a.M32, a.M33, a.M34).AsVector4();
+            vtav.row[3] = Vector128.Create(a.M41, a.M42, a.M43, a.M44).AsVector4();
 
             log?.WriteLine("svd_solve_sym");
-            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].X:#0.000000000},{vtav.row[1].Y:#0.000000000},{vtav.row[1].Z:#0.000000000},{vtav.row[1].W:#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
             for (int i = 0; i < SvdNumSweeps; ++i)
             {
                 Vector128<float> c = new();
                 Vector128<float> s = new();
 
-                if (vtav.row[0].GetElement(1) != 0f)
+                if (vtav.row[0].Y != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 1);
                     RotateQXY(ref vtav, c, s, 0, 1);
                     RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 1);
-                    vtav.row[0] = vtav.row[0].WithElement(1, 0);
+                    vtav.row[0].Y = 0f;
                 }
 
-                if (vtav.row[0].GetElement(2) != 0f)
+                if (vtav.row[0].Z != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 2);
                     RotateQXY(ref vtav, c, s, 0, 2);
                     RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 2);
-                    vtav.row[0] = vtav.row[0].WithElement(2, 0);
+                    vtav.row[0].Z = 0f;
                 }
 
-                if (vtav.row[1].GetElement(2) != 0f)
+                if (vtav.row[1].Z != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 1, 2);
                     RotateQXY(ref vtav, c, s, 1, 2);
                     RotateXY(ref vtav, ref v, c.GetElement(2), s.GetElement(2), 1, 2);
-                    vtav.row[1] = vtav.row[1].WithElement(2, 0);
+                    vtav.row[1].Z = 0f;
                 }
 
                 log?.WriteLine($"c:{ToString(c)}");
                 log?.WriteLine($"s:{ToString(s)}");
             }
 
-            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].X:#0.000000000},{vtav.row[1].Y:#0.000000000},{vtav.row[1].Z:#0.000000000},{vtav.row[1].W:#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
-            return new Vector4(vtav.row[0].GetElement(0), vtav.row[1].GetElement(1), vtav.row[2].GetElement(2), 0f);
+            return new Vector4(vtav.row[0].X, vtav.row[1].Y, vtav.row[2].Z, 0f);
         }
 
-        private void RotateXY(ref Mat4x4 vtav, ref Matrix4x4 vv, float c, float s, int a, int b)
+        public static float Item(Matrix4x4 m, int row, int column)
         {
-            var v = new Mat4x4();
-            v.row[0] = Vector128.Create(vv.M11, vv.M12, vv.M13, vv.M14);
-            v.row[1] = Vector128.Create(vv.M21, vv.M22, vv.M23, vv.M24);
-            v.row[2] = Vector128.Create(vv.M31, vv.M32, vv.M33, vv.M34);
-            v.row[3] = Vector128.Create(vv.M41, vv.M42, vv.M43, vv.M44);
+            switch (row)
+            {
+                case 0:
+                    switch (column)
+                    {
+                        case 0:
+                            return m.M11;
+                        case 1:
+                            return m.M12;
+                        case 2:
+                            return m.M13;
+                        case 3:
+                            return m.M14;
+                    }
+                    break;
+
+                case 1:
+                    switch (column)
+                    {
+                        case 0:
+                            return m.M21;
+                        case 1:
+                            return m.M22;
+                        case 2:
+                            return m.M23;
+                        case 3:
+                            return m.M24;
+                    }
+                    break;
+
+                case 2:
+                    switch (column)
+                    {
+                        case 0:
+                            return m.M31;
+                        case 1:
+                            return m.M32;
+                        case 2:
+                            return m.M33;
+                        case 3:
+                            return m.M34;
+                    }
+                    break;
+
+                case 3:
+                    switch (column)
+                    {
+                        case 0:
+                            return m.M41;
+                        case 1:
+                            return m.M42;
+                        case 2:
+                            return m.M43;
+                        case 3:
+                            return m.M44;
+                    }
+                    break;
+            }
+
+            throw new IndexOutOfRangeException();
+        }
+
+        public static void Item(ref Matrix4x4 m, int row, int column, float value)
+        {
+            switch (row)
+            {
+                case 0:
+                    switch (column)
+                    {
+                        case 0:
+                            m.M11 = value;
+                            return;
+                        case 1:
+                            m.M12 = value;
+                            return;
+                        case 2:
+                            m.M13 = value;
+                            return;
+                        case 3:
+                            m.M14 = value;
+                            return;
+                    }
+                    break;
+
+                case 1:
+                    switch (column)
+                    {
+                        case 0:
+                            m.M21 = value;
+                            return;
+                        case 1:
+                            m.M22 = value;
+                            return;
+                        case 2:
+                            m.M23 = value;
+                            return;
+                        case 3:
+                            m.M24 = value;
+                            return;
+                    }
+                    break;
+
+                case 2:
+                    switch (column)
+                    {
+                        case 0:
+                            m.M31 = value;
+                            return;
+                        case 1:
+                            m.M32 = value;
+                            return;
+                        case 2:
+                            m.M33 = value;
+                            return;
+                        case 3:
+                            m.M34 = value;
+                            return;
+                    }
+                    break;
+
+                case 3:
+                    switch (column)
+                    {
+                        case 0:
+                            m.M41 = value;
+                            return;
+                        case 1:
+                            m.M42 = value;
+                            return;
+                        case 2:
+                            m.M43 = value;
+                            return;
+                        case 3:
+                            m.M44 = value;
+                            return;
+                    }
+                    break;
+            }
+
+            throw new IndexOutOfRangeException();
+        }
+
+        private void RotateXY(ref Mat4x4 vtav, ref Matrix4x4 v, float c, float s, int a, int b)
+        {
+            //var v = new Mat4x4();
+            //v.row[0] = Vector128.Create(vv.M11, vv.M12, vv.M13, vv.M14);
+            //v.row[1] = Vector128.Create(vv.M21, vv.M22, vv.M23, vv.M24);
+            //v.row[2] = Vector128.Create(vv.M31, vv.M32, vv.M33, vv.M34);
+            //v.row[3] = Vector128.Create(vv.M41, vv.M42, vv.M43, vv.M44);
 
             //var simd_u = Vector128.Create(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
             //var simd_v = Vector128.Create(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
-            var simd_u = new Vector4(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
-            var simd_v = new Vector4(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
+            //var simd_u = new Vector4(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
+            //var simd_v = new Vector4(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
+            var simd_u = new Vector4(Item(v, 0, a), Item(v, 1, a), Item(v, 2, a), vtav[0, 3 - b]);
+            var simd_v = new Vector4(Item(v, 0, b), Item(v, 1, b), Item(v, 2, b), vtav[1 - a, 2]);
 
             log?.WriteLine("rotate_xy");
             log?.WriteLine($"a:{a} b:{b}");
-            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].X:#0.000000000},{vtav.row[1].Y:#0.000000000},{vtav.row[1].Z:#0.000000000},{vtav.row[1].W:#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
-            log?.WriteLine($"v[0]: {v.row[0].GetElement(0):#0.000000000},{v.row[0].GetElement(1):#0.000000000},{v.row[0].GetElement(2):#0.000000000},{v.row[0].GetElement(3):#0.000000000}");
-            log?.WriteLine($"v[1]: {v.row[1].GetElement(0):#0.000000000},{v.row[1].GetElement(1):#0.000000000},{v.row[1].GetElement(2):#0.000000000},{v.row[1].GetElement(3):#0.000000000}");
-            log?.WriteLine($"v[2]: {v.row[2].GetElement(0):#0.000000000},{v.row[2].GetElement(1):#0.000000000},{v.row[2].GetElement(2):#0.000000000},{v.row[2].GetElement(3):#0.000000000}");
-            log?.WriteLine($"v[3]: {v.row[3].GetElement(0):#0.000000000},{v.row[3].GetElement(1):#0.000000000},{v.row[3].GetElement(2):#0.000000000},{v.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"v[0]: {v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
+            log?.WriteLine($"v[1]: {v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
+            log?.WriteLine($"v[2]: {v.M31:#0.000000000},{v.M32:#0.000000000},{v.M33:#0.000000000},{v.M34:#0.000000000}");
+            log?.WriteLine($"v[3]: {v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
 
             log?.WriteLine($"simd_u: {simd_u.X:#0.000000000},{simd_u.Y:#0.000000000},{simd_u.Z:#0.000000000},{simd_u.W:#0.000000000}");
             log?.WriteLine($"simd_v: {simd_v.X:#0.000000000},{simd_v.Y:#0.000000000},{simd_v.Z:#0.000000000},{simd_v.W:#0.000000000}");
@@ -697,32 +864,32 @@
             //v.row[2] = v.row[2].WithElement(b, y.GetElement(2));
             //vtav.row[1 - a] = vtav.row[1 - a].WithElement(2, y.GetElement(3));
 
-            v.row[0] = v.row[0].WithElement(a, x.X);
-            v.row[1] = v.row[1].WithElement(a, x.Y);
-            v.row[2] = v.row[2].WithElement(a, x.Z);
-            vtav.row[0] = vtav.row[0].WithElement(3 - b, x.W);
+            Item(ref v, 0, a, x.X);
+            Item(ref v, 1, a, x.Y);
+            Item(ref v, 2, a, x.Z);
+            vtav[0, 3 - b] = x.W;
 
-            v.row[0] = v.row[0].WithElement(b, y.X);
-            v.row[1] = v.row[1].WithElement(b, y.Y);
-            v.row[2] = v.row[2].WithElement(b, y.Z);
-            vtav.row[1 - a] = vtav.row[1 - a].WithElement(2, y.W);
+            Item(ref v, 0, b, y.X);
+            Item(ref v, 1, b, y.Y);
+            Item(ref v, 2, b, y.Z);
+            vtav[1 - a, 2] = y.W;
 
-            vtav.row[a] = vtav.row[a].WithElement(b, 0f);
+            vtav[a, b] = 0f;
 
-            vv = v.AsMatrix4x4();
+            //vv = v.AsMatrix4x4();
         }
 
         private void RotateQXY(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
         {
             log?.WriteLine("rotateq_xy");
-            log?.WriteLine($"vtav[0]: {vtav.row[0].GetElement(0):#0.000000000},{vtav.row[0].GetElement(1):#0.000000000},{vtav.row[0].GetElement(2):#0.000000000},{vtav.row[0].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[1]: {vtav.row[1].GetElement(0):#0.000000000},{vtav.row[1].GetElement(1):#0.000000000},{vtav.row[1].GetElement(2):#0.000000000},{vtav.row[1].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[2]: {vtav.row[2].GetElement(0):#0.000000000},{vtav.row[2].GetElement(1):#0.000000000},{vtav.row[2].GetElement(2):#0.000000000},{vtav.row[2].GetElement(3):#0.000000000}");
-            log?.WriteLine($"vtav[3]: {vtav.row[3].GetElement(0):#0.000000000},{vtav.row[3].GetElement(1):#0.000000000},{vtav.row[3].GetElement(2):#0.000000000},{vtav.row[3].GetElement(3):#0.000000000}");
+            log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
+            log?.WriteLine($"vtav[1]: {vtav.row[1].X:#0.000000000},{vtav.row[1].Y:#0.000000000},{vtav.row[1].Z:#0.000000000},{vtav.row[1].W:#0.000000000}");
+            log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
+            log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
-            var u = Vector128.Create(vtav.row[a].GetElement(a), vtav.row[a].GetElement(a), vtav.row[a].GetElement(a), 0f);
-            var v = Vector128.Create(vtav.row[b].GetElement(b), vtav.row[b].GetElement(b), vtav.row[b].GetElement(b), 0f);
-            var A = Vector128.Create(vtav.row[a].GetElement(b), vtav.row[a].GetElement(b), vtav.row[a].GetElement(b), 0f);
+            var u = Vector128.Create(vtav[a, a], vtav[a, a], vtav[a, a], 0f);
+            var v = Vector128.Create(vtav[b, b], vtav[b, b], vtav[b, b], 0f);
+            var A = Vector128.Create(vtav[a, b], vtav[a, b], vtav[a, b], 0f);
 
             log?.WriteLine($"u: {u.GetElement(0):#0.000000000},{u.GetElement(1):#0.000000000},{u.GetElement(2):#0.000000000},{u.GetElement(3):#0.000000000}");
             log?.WriteLine($"v: {v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}");
@@ -749,15 +916,15 @@
             var y2 = Sse.Multiply(cc, v);
             var y = Sse.Add(y1, y2);
 
-            vtav.row[a] = vtav.row[a].WithElement(a, x.GetElement(0));
-            vtav.row[b] = vtav.row[b].WithElement(b, y.GetElement(0));
+            vtav[a, a] = x.GetElement(0);
+            vtav[b, b] = y.GetElement(0);
         }
 
         private void GivensCoeffsSym(ref Vector128<float> c_result, ref Vector128<float> s_result, Mat4x4 vtav, int a, int b)
         {
-            var simd_pp = Vector128.Create(0f, vtav.row[a].GetElement(a), vtav.row[a].GetElement(a), vtav.row[a].GetElement(a));
-            var simd_pq = Vector128.Create(0f, vtav.row[a].GetElement(b), vtav.row[a].GetElement(b), vtav.row[a].GetElement(b));
-            var simd_qq = Vector128.Create(0f, vtav.row[b].GetElement(b), vtav.row[b].GetElement(b), vtav.row[b].GetElement(b));
+            var simd_pp = Vector128.Create(0f, vtav[a, a], vtav[a, a], vtav[a, a]);
+            var simd_pq = Vector128.Create(0f, vtav[a, b], vtav[a, b], vtav[a, b]);
+            var simd_qq = Vector128.Create(0f, vtav[b, b], vtav[b, b], vtav[b, b]);
 
             var zeros = Vector128.Create(0f);
             var ones = Vector128.Create(1f);
