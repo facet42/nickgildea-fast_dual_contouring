@@ -400,6 +400,10 @@ static inline __m128 svd_invdet(const __m128& x)
 	__m128 abs_one_over_x = vec4_abs(one_over_x);
 	__m128 min_abs = _mm_min_ps(abs_x, abs_one_over_x);
 	__m128 cmp = _mm_cmpge_ps(min_abs, tol);
+
+	logFile << "1/x:" << ToString(one_over_x) << std::endl;
+	logFile << "cmp:" << ToString(cmp) << std::endl;
+
 	return _mm_and_ps(cmp, one_over_x);
 }
 
@@ -494,6 +498,11 @@ void qef_simd_add(
 	__m128 nX = _mm_mul_ps(_mm_shuffle_ps(n, n, _MM_SHUFFLE(0, 0, 0, 0)), n);
 	__m128 nY = _mm_mul_ps(_mm_shuffle_ps(n, n, _MM_SHUFFLE(1, 1, 1, 1)), n);
 	__m128 nZ = _mm_mul_ps(_mm_shuffle_ps(n, n, _MM_SHUFFLE(2, 2, 2, 2)), n);
+
+	//logFile << "n: " << ToString(n) << std::endl;
+	//logFile << "nX: " << ToString(nX) << std::endl;
+	//logFile << "nY: " << ToString(nY) << std::endl;
+	//logFile << "nZ: " << ToString(nZ) << std::endl;
 
 	ATA.row[0] = _mm_add_ps(ATA.row[0], nX);
 	ATA.row[1] = _mm_add_ps(ATA.row[1], nY);

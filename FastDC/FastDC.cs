@@ -333,12 +333,12 @@
                 return 0f;
             }
 
-            var p = new Vector128<float>[count];
-            var n = new Vector128<float>[count];
+            var p = new Vector4[count];
+            var n = new Vector4[count];
             for (int i = 0; i < count; i++)
             {
-                p[i] = Vector128.Create(positions[i].x, positions[i].y, positions[i].z, positions[i].w);
-                n[i] = Vector128.Create(normals[i].x, normals[i].y, normals[i].z, normals[i].w);
+                p[i] = new Vector4(positions[i].x, positions[i].y, positions[i].z, positions[i].w);
+                n[i] = new Vector4(normals[i].x, normals[i].y, normals[i].z, normals[i].w);
             }
 
             var error = QefSolveFromPoints(p, n, count, out var solved);
@@ -346,7 +346,7 @@
             return error;
         }
 
-        private float QefSolveFromPoints(Vector128<float>[] positions, Vector128<float>[] normals, int count, out Vector4 solvedPosition)
+        private float QefSolveFromPoints(Vector4[] positions, Vector4[] normals, int count, out Vector4 solvedPosition)
         {
             var pointAccum = new Vector4();
             var ATb = new Vector4();
@@ -363,21 +363,30 @@
             return QefSimdSolve(ATA, ATb, pointAccum, out solvedPosition);
         }
 
-        private static void QefSimdAdd(Vector128<float> p, Vector128<float> n, ref Mat4x4 ATA, ref Vector4 ATb, ref Vector4 pointAccum)
+        private static void QefSimdAdd(Vector4 p, Vector4 n, ref Mat4x4 ATA, ref Vector4 ATb, ref Vector4 pointAccum)
         {
-            var nX = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(0, 0, 0, 0)), n);
-            var nY = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(1, 1, 1, 1)), n);
-            var nZ = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(2, 2, 2, 2)), n);
+            //var nX = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(0, 0, 0, 0)), n);
+            //var nY = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(1, 1, 1, 1)), n);
+            //var nZ = Sse.Multiply(Sse.Shuffle(n, n, MM_Shuffle(2, 2, 2, 2)), n);
 
-            ATA.row[0] += nX.AsVector4();
-            ATA.row[1] += nY.AsVector4();
-            ATA.row[2] += nZ.AsVector4();
+            var nX = new Vector4(n.X, n.X, n.X, n.X) * n;
+            var nY = new Vector4(n.Y, n.Y, n.Y, n.Y) * n;
+            var nZ = new Vector4(n.Z, n.Z, n.Z, n.Z) * n;
 
-            var d = Dot(p, n);
-            var x = Vector128.Create(d, d, d, 0f);
-            x = Sse.Multiply(x, n);
-            ATb += x.AsVector4();
-            pointAccum += p.AsVector4();
+            //log?.WriteLine($"n: {n.X:0.000000000},{n.Y:0.000000000},{n.Z:0.000000000},{n.W:0.000000000}");
+            //log?.WriteLine($"nX: {nX.X:0.000000000},{nX.Y:0.000000000},{nX.Z:0.000000000},{nX.W:0.000000000}");
+            //log?.WriteLine($"nY: {nY.X:0.000000000},{nY.Y:0.000000000},{nY.Z:0.000000000},{nY.W:0.000000000}");
+            //log?.WriteLine($"nZ: {nZ.X:0.000000000},{nZ.Y:0.000000000},{nZ.Z:0.000000000},{nZ.W:0.000000000}");
+
+            ATA.row[0] += nX;
+            ATA.row[1] += nY;
+            ATA.row[2] += nZ;
+
+            var d = Vector4.Dot(p, n);
+            var x = new Vector4(d, d, d, 0f);
+            x *= n;
+            ATb += x;
+            pointAccum += p;
         }
 
         private float QefSimdSolve(Mat4x4 ATA, Vector4 ATb, Vector4 pointAccum, out Vector4 solved)
@@ -404,13 +413,6 @@
         {
             var tmp = b - Vector4.Transform(x, A.AsMatrix4x4());
             return Vector4.Dot(tmp, tmp);
-        }
-
-        private static float Dot(Vector128<float> a, Vector128<float> b)
-        {
-            var v0 = a.AsVector4();
-            var v1 = b.AsVector4();
-            return Vector4.Dot(v0, v1);
         }
 
         private void SvdSolveATAATb(Mat4x4 ATA, Vector4 ATb, out Vector4 x)
@@ -445,7 +447,7 @@
         private void SvdPseudoInverse(out Mat4x4 o, Vector4 sigma, Mat4x4 v)
         {
             var invDet = SvdInvDet(sigma);
-            log?.WriteLine($"InvDet:{ToString(invDet)}");
+            log?.WriteLine($"InvDet:{invDet}");
 
             //log?.WriteLine($"v[0]:{v.M11:#0.000000000},{v.M12:#0.000000000},{v.M13:#0.000000000},{v.M14:#0.000000000}");
             //log?.WriteLine($"v[1]:{v.M21:#0.000000000},{v.M22:#0.000000000},{v.M23:#0.000000000},{v.M24:#0.000000000}");
@@ -453,18 +455,10 @@
             //log?.WriteLine($"v[3]:{v.M41:#0.000000000},{v.M42:#0.000000000},{v.M43:#0.000000000},{v.M44:#0.000000000}");
             log?.WriteLine($"v:{v}");
 
-            var v0 = Vector128.Create(v[0, 0], v[0, 1], v[0, 2], v[0, 3]);
-            var v1 = Vector128.Create(v[1, 0], v[1, 1], v[1, 2], v[1, 3]);
-            var v2 = Vector128.Create(v[2, 0], v[2, 1], v[2, 2], v[2, 3]);
-
             var m = new Mat4x4();
-            //m.row[0] = Sse.Multiply(v0, invDet);
-            //m.row[1] = Sse.Multiply(v1, invDet);
-            //m.row[2] = Sse.Multiply(v2, invDet);
-            //m.row[3] = Vector128.Create(0f);
-            m.row[0] = v0.AsVector4() * invDet.AsVector4();
-            m.row[1] = v1.AsVector4() * invDet.AsVector4();
-            m.row[2] = v2.AsVector4() * invDet.AsVector4();
+            m.row[0] = v.row[0] * invDet;
+            m.row[1] = v.row[1] * invDet;
+            m.row[2] = v.row[2] * invDet;
             m.row[3] = new Vector4();
 
             log?.WriteLine($"m[0]:{ToString(m.row[0].AsVector128())}");
@@ -474,31 +468,19 @@
 
             o = new Mat4x4();
 
-            //o.row[0] = o.row[0].WithElement(0, Dot(m.row[0], v.row[0]));
-            //o.row[0] = o.row[0].WithElement(1, Dot(m.row[1], v.row[0]));
-            //o.row[0] = o.row[0].WithElement(2, Dot(m.row[2], v.row[0]));
-            //o.row[0] = o.row[0].WithElement(3, 0);
-            o[0, 0] = Dot(m.row[0].AsVector128(), v0);
-            o[0, 1] = Dot(m.row[1].AsVector128(), v0);
-            o[0, 2] = Dot(m.row[2].AsVector128(), v0);
+            o[0, 0] = Vector4.Dot(m.row[0], v.row[0]);
+            o[0, 1] = Vector4.Dot(m.row[1], v.row[0]);
+            o[0, 2] = Vector4.Dot(m.row[2], v.row[0]);
             o[0, 3] = 0f;
 
-            //o.row[1] = o.row[1].WithElement(0, Dot(m.row[0], v.row[1]));
-            //o.row[1] = o.row[1].WithElement(1, Dot(m.row[1], v.row[1]));
-            //o.row[1] = o.row[1].WithElement(2, Dot(m.row[2], v.row[1]));
-            //o.row[1] = o.row[1].WithElement(3, 0);
-            o[1, 0] = Dot(m.row[0].AsVector128(), v1);
-            o[1, 1] = Dot(m.row[1].AsVector128(), v1);
-            o[1, 2] = Dot(m.row[2].AsVector128(), v1);
+            o[1, 0] = Vector4.Dot(m.row[0], v.row[1]);
+            o[1, 1] = Vector4.Dot(m.row[1], v.row[1]);
+            o[1, 2] = Vector4.Dot(m.row[2], v.row[1]);
             o[1, 3] = 0f;
 
-            //o.row[2] = o.row[2].WithElement(0, Dot(m.row[0], v.row[2]));
-            //o.row[2] = o.row[2].WithElement(1, Dot(m.row[1], v.row[2]));
-            //o.row[2] = o.row[2].WithElement(2, Dot(m.row[2], v.row[2]));
-            //o.row[2] = o.row[2].WithElement(3, 0);
-            o[2, 0] = Dot(m.row[0].AsVector128(), v2);
-            o[2, 1] = Dot(m.row[1].AsVector128(), v2);
-            o[2, 2] = Dot(m.row[2].AsVector128(), v2);
+            o[2, 0] = Vector4.Dot(m.row[0], v.row[2]);
+            o[2, 1] = Vector4.Dot(m.row[1], v.row[2]);
+            o[2, 2] = Vector4.Dot(m.row[2], v.row[2]);
             o[2, 3] = 0f;
 
             o[3, 0] = m.row[3].X;
@@ -518,26 +500,22 @@
             return $"{v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}";
         }
 
-        private static Vector128<float> SvdInvDet(Vector4 x)
+        private Vector4 SvdInvDet(Vector4 v)
         {
             var ones = new Vector4(1f);
-            var tol = Vector128.Create(PseudoInverseThreshold);
+            var tol = new Vector4(PseudoInverseThreshold);
 
-            var abs_x = Vector4.Abs(x);
-            var one_over_x = ones / x;
+            var abs_x = Vector4.Abs(v);
+            var one_over_x = ones / v;
             var abs_one_over_x = Vector4.Abs(one_over_x);
-            var min_abs = Vector4.Min(abs_x, abs_one_over_x).AsVector128();
-            var cmp = Sse.CompareGreaterThanOrEqual(min_abs, tol);
+            var min_abs = Vector4.Min(abs_x, abs_one_over_x);
 
-            return Sse.And(cmp, one_over_x.AsVector128());
+            return new Vector4(
+                min_abs.X >= tol.X ? one_over_x.X : 0,
+                min_abs.Y >= tol.X ? one_over_x.Y : 0,
+                min_abs.Z >= tol.X ? one_over_x.Z : 0,
+                min_abs.W >= tol.X ? one_over_x.W : 0);
         }
-
-        //private static Vector128<float> Vec4Abs(Vector128<float> x)
-        //{
-        //    return Vector4.Abs(x.AsVector4()).AsVector128();
-        //    //var mask = Vector128.Create(-0f);
-        //    //return Sse.AndNot(mask, x);
-        //}
 
         private Vector4 SvdSolveSym(ref Mat4x4 v, Mat4x4 a)
         {
