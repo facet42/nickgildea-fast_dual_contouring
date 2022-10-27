@@ -519,11 +519,7 @@
 
         private Vector4 SvdSolveSym(ref Mat4x4 v, Mat4x4 a)
         {
-            var vtav = new Mat4x4();
-            vtav.row[0] = Vector128.Create(a[0, 0], a[0, 1], a[0, 2], a[0, 3]).AsVector4();
-            vtav.row[1] = Vector128.Create(a[1, 0], a[1, 1], a[1, 2], a[1, 3]).AsVector4();
-            vtav.row[2] = Vector128.Create(a[2, 0], a[2, 1], a[2, 2], a[2, 3]).AsVector4();
-            vtav.row[3] = Vector128.Create(a[3, 0], a[3, 1], a[3, 2], a[3, 3]).AsVector4();
+            var vtav = a;
 
             log?.WriteLine("svd_solve_sym");
             log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
@@ -533,14 +529,14 @@
 
             for (int i = 0; i < SvdNumSweeps; ++i)
             {
-                Vector128<float> c = new();
-                Vector128<float> s = new();
+                var c = new Vector4();
+                var s = new Vector4();
 
                 if (vtav.row[0].Y != 0f)
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 1);
                     RotateQXY(ref vtav, c, s, 0, 1);
-                    RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 1);
+                    RotateXY(ref vtav, ref v, c.Y, s.Y, 0, 1);
                     vtav.row[0].Y = 0f;
                 }
 
@@ -548,7 +544,7 @@
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 0, 2);
                     RotateQXY(ref vtav, c, s, 0, 2);
-                    RotateXY(ref vtav, ref v, c.GetElement(1), s.GetElement(1), 0, 2);
+                    RotateXY(ref vtav, ref v, c.Y, s.Y, 0, 2);
                     vtav.row[0].Z = 0f;
                 }
 
@@ -556,12 +552,12 @@
                 {
                     GivensCoeffsSym(ref c, ref s, vtav, 1, 2);
                     RotateQXY(ref vtav, c, s, 1, 2);
-                    RotateXY(ref vtav, ref v, c.GetElement(2), s.GetElement(2), 1, 2);
+                    RotateXY(ref vtav, ref v, c.Z, s.Z, 1, 2);
                     vtav.row[1].Z = 0f;
                 }
 
-                log?.WriteLine($"c:{ToString(c)}");
-                log?.WriteLine($"s:{ToString(s)}");
+                log?.WriteLine($"c:{c}");
+                log?.WriteLine($"s:{s}");
             }
 
             log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
@@ -721,16 +717,6 @@
 
         private void RotateXY(ref Mat4x4 vtav, ref Mat4x4 v, float c, float s, int a, int b)
         {
-            //var v = new Mat4x4();
-            //v.row[0] = Vector128.Create(vv.M11, vv.M12, vv.M13, vv.M14);
-            //v.row[1] = Vector128.Create(vv.M21, vv.M22, vv.M23, vv.M24);
-            //v.row[2] = Vector128.Create(vv.M31, vv.M32, vv.M33, vv.M34);
-            //v.row[3] = Vector128.Create(vv.M41, vv.M42, vv.M43, vv.M44);
-
-            //var simd_u = Vector128.Create(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
-            //var simd_v = Vector128.Create(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
-            //var simd_u = new Vector4(v.row[0].GetElement(a), v.row[1].GetElement(a), v.row[2].GetElement(a), vtav.row[0].GetElement(3 - b));
-            //var simd_v = new Vector4(v.row[0].GetElement(b), v.row[1].GetElement(b), v.row[2].GetElement(b), vtav.row[1 - a].GetElement(2));
             var simd_u = new Vector4(Item(v, 0, a), Item(v, 1, a), Item(v, 2, a), vtav[0, 3 - b]);
             var simd_v = new Vector4(Item(v, 0, b), Item(v, 1, b), Item(v, 2, b), vtav[1 - a, 2]);
 
@@ -750,18 +736,8 @@
             log?.WriteLine($"simd_u: {simd_u.X:#0.000000000},{simd_u.Y:#0.000000000},{simd_u.Z:#0.000000000},{simd_u.W:#0.000000000}");
             log?.WriteLine($"simd_v: {simd_v.X:#0.000000000},{simd_v.Y:#0.000000000},{simd_v.Z:#0.000000000},{simd_v.W:#0.000000000}");
 
-            //var simd_c = Vector128.Create(c);
-            //var simd_s = Vector128.Create(s);
             var simd_c = new Vector4(c);
             var simd_s = new Vector4(s);
-
-            //var x0 = Sse.Multiply(simd_c, simd_u);
-            //var x1 = Sse.Multiply(simd_s, simd_v);
-            //var x = Sse.Subtract(x0, x1);
-
-            //var y0 = Sse.Multiply(simd_s, simd_u);
-            //var y1 = Sse.Multiply(simd_c, simd_v);
-            //var y = Sse.Add(y0, y1);
 
             var x0 = simd_c * simd_u;
             var x1 = simd_s * simd_v;
@@ -770,16 +746,6 @@
             var y0 = simd_s * simd_u;
             var y1 = simd_c * simd_v;
             var y = y0 + y1;
-
-            //v.row[0] = v.row[0].WithElement(a, x.GetElement(0));
-            //v.row[1] = v.row[1].WithElement(a, x.GetElement(1));
-            //v.row[2] = v.row[2].WithElement(a, x.GetElement(2));
-            //vtav.row[0] = vtav.row[0].WithElement(3 - b, x.GetElement(3));
-
-            //v.row[0] = v.row[0].WithElement(b, y.GetElement(0));
-            //v.row[1] = v.row[1].WithElement(b, y.GetElement(1));
-            //v.row[2] = v.row[2].WithElement(b, y.GetElement(2));
-            //vtav.row[1 - a] = vtav.row[1 - a].WithElement(2, y.GetElement(3));
 
             Item(ref v, 0, a, x.X);
             Item(ref v, 1, a, x.Y);
@@ -792,11 +758,9 @@
             vtav[1 - a, 2] = y.W;
 
             vtav[a, b] = 0f;
-
-            //vv = v.AsMat4x4();
         }
 
-        private void RotateQXY(ref Mat4x4 vtav, Vector128<float> c, Vector128<float> s, int a, int b)
+        private void RotateQXY(ref Mat4x4 vtav, Vector4 c, Vector4 s, int a, int b)
         {
             log?.WriteLine("rotateq_xy");
             log?.WriteLine($"vtav[0]: {vtav.row[0].X:#0.000000000},{vtav.row[0].Y:#0.000000000},{vtav.row[0].Z:#0.000000000},{vtav.row[0].W:#0.000000000}");
@@ -804,243 +768,76 @@
             log?.WriteLine($"vtav[2]: {vtav.row[2].X:#0.000000000},{vtav.row[2].Y:#0.000000000},{vtav.row[2].Z:#0.000000000},{vtav.row[2].W:#0.000000000}");
             log?.WriteLine($"vtav[3]: {vtav.row[3].X:#0.000000000},{vtav.row[3].Y:#0.000000000},{vtav.row[3].Z:#0.000000000},{vtav.row[3].W:#0.000000000}");
 
-            var u = Vector128.Create(vtav[a, a], vtav[a, a], vtav[a, a], 0f);
-            var v = Vector128.Create(vtav[b, b], vtav[b, b], vtav[b, b], 0f);
-            var A = Vector128.Create(vtav[a, b], vtav[a, b], vtav[a, b], 0f);
+            var u = new Vector4(vtav[a, a], vtav[a, a], vtav[a, a], 0f);
+            var v = new Vector4(vtav[b, b], vtav[b, b], vtav[b, b], 0f);
+            var A = new Vector4(vtav[a, b], vtav[a, b], vtav[a, b], 0f);
 
-            log?.WriteLine($"u: {u.GetElement(0):#0.000000000},{u.GetElement(1):#0.000000000},{u.GetElement(2):#0.000000000},{u.GetElement(3):#0.000000000}");
-            log?.WriteLine($"v: {v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}");
-            log?.WriteLine($"A: {A.GetElement(0):#0.000000000},{A.GetElement(1):#0.000000000},{A.GetElement(2):#0.000000000},{A.GetElement(3):#0.000000000}");
+            log?.WriteLine($"u: {u.X:#0.000000000},{u.Y:#0.000000000},{u.Z:#0.000000000},{u.W:#0.000000000}");
+            log?.WriteLine($"v: {v.X:#0.000000000},{v.Y:#0.000000000},{v.Z:#0.000000000},{v.W:#0.000000000}");
+            log?.WriteLine($"A: {A.X:#0.000000000},{A.Y:#0.000000000},{A.Z:#0.000000000},{A.W:#0.000000000}");
 
-            var twos = Vector128.Create(2f);
-            var cc = Sse.Multiply(c, c);
-            var ss = Sse.Multiply(s, s);
+            var twos = new Vector4(2f);
+            var cc = c * c; // Sse.Multiply(c, c);
+            var ss = s * s; // Sse.Multiply(s, s);
 
             // mx = 2.0 * c * s * A;
-            var c2 = Sse.Multiply(twos, c);
-            var c2s = Sse.Multiply(c2, s);
-            var mx = Sse.Multiply(c2s, A);
+            var c2 = twos * c; //Sse.Multiply(twos, c);
+            var c2s = c2 * s; //Sse.Multiply(c2, s);
+            var mx = c2s * A; // Sse.Multiply(c2s, A);
 
             // x = cc * u - mx + ss * v;
-            var x0 = Sse.Multiply(cc, u);
-            var x1 = Sse.Subtract(x0, mx);
-            var x2 = Sse.Multiply(ss, v);
-            var x = Sse.Add(x1, x2);
+            var x0 = cc * u; // Sse.Multiply(cc, u);
+            var x1 = x0 - mx; // Sse.Subtract(x0, mx);
+            var x2 = ss * v; // Sse.Multiply(ss, v);
+            var x = x1 + x2;// Sse.Add(x1, x2);
 
             // y = ss * u + mx + cc * v;
-            var y0 = Sse.Multiply(ss, u);
-            var y1 = Sse.Add(y0, mx);
-            var y2 = Sse.Multiply(cc, v);
-            var y = Sse.Add(y1, y2);
+            var y0 = ss * u; // Sse.Multiply(ss, u);
+            var y1 = y0 + mx;
+            var y2 = cc * v; // Sse.Multiply(cc, v);
+            var y = y1 + y2; // Sse.Add(y1, y2);
 
-            vtav[a, a] = x.GetElement(0);
-            vtav[b, b] = y.GetElement(0);
+            vtav[a, a] = x.X;
+            vtav[b, b] = y.X;
         }
 
-        private void GivensCoeffsSym(ref Vector128<float> c_result, ref Vector128<float> s_result, Mat4x4 vtav, int a, int b)
+        private void GivensCoeffsSym(ref Vector4 c_result, ref Vector4 s_result, Mat4x4 vtav, int a, int b)
         {
-            var simd_pp = Vector128.Create(0f, vtav[a, a], vtav[a, a], vtav[a, a]);
-            var simd_pq = Vector128.Create(0f, vtav[a, b], vtav[a, b], vtav[a, b]);
-            var simd_qq = Vector128.Create(0f, vtav[b, b], vtav[b, b], vtav[b, b]);
-
-            var zeros = Vector128.Create(0f);
-            var ones = Vector128.Create(1f);
-            var twos = Vector128.Create(2f);
+            var simd_pp = new Vector4(vtav[a, a], vtav[a, a], vtav[a, a], 0f);
+            var simd_pq = new Vector4(vtav[a, b], vtav[a, b], vtav[a, b], 0f);
+            var simd_qq = new Vector4(vtav[b, b], vtav[b, b], vtav[b, b], 0f);
 
             // tau = (a_qq - a_pp) / (2.f * a_pq);
-            var pq2 = Sse.Multiply(simd_pq, twos);
-            var qq_sub_pp = Sse.Subtract(simd_qq, simd_pp);
-            var tau = Sse.Divide(qq_sub_pp, pq2);
+            var tau = (simd_qq - simd_pp) / (2f * simd_pq);
 
             // stt = sqrt(1.f + tau * tau);
-            var tau_sq = Sse.Multiply(tau, tau);
-            var tau_sq_1 = Sse.Add(tau_sq, ones);
-            var stt = Sse.Sqrt(tau_sq_1);
+            var stt = Vector4.SquareRoot(Vector4.One + tau * tau);
 
             // tan = 1.f / ((tau >= 0.f) ? (tau + stt) : (tau - stt));
-            var tan_gt = Sse.Add(tau, stt);
-            var tan_lt = Sse.Subtract(tau, stt);
-            var tan_cmp = Sse.CompareGreaterThanOrEqual(tau, zeros);
-            var tan_cmp_gt = Sse.And(tan_cmp, tan_gt);
-            var tan_cmp_lt = Sse.AndNot(tan_cmp, tan_lt);
-            var tan_inv = Sse.Or(tan_cmp_gt, tan_cmp_lt);
-            var tan = Sse.Divide(ones, tan_inv);
+            var tan = new Vector4(
+                1f / ((tau.X >= 0f) ? (tau.X + stt.X) : (tau.X - stt.X)),
+                1f / ((tau.Y >= 0f) ? (tau.Y + stt.Y) : (tau.Y - stt.Y)),
+                1f / ((tau.Z >= 0f) ? (tau.Z + stt.Z) : (tau.Z - stt.Z)),
+                1f / ((tau.W >= 0f) ? (tau.W + stt.W) : (tau.W - stt.W)));
 
             // c = rsqrt(1.f + tan * tan);
-            var tan_sq = Sse.Multiply(tan, tan);
-            var tan_sq_1 = Sse.Add(ones, tan_sq);
-            var c = Sse.ReciprocalSqrt(tan_sq_1);
+            var c = Vector4.One / Vector4.SquareRoot(Vector4.One + tan * tan);
 
             // s = tan * c;
-            var s = Sse.Multiply(tan, c);
+            var s = tan * c;
 
             // if pq == 0.0: c = 1.f, s = 0.f
-            var pq_cmp = Sse.CompareEqual(simd_pq, zeros);
+            c_result = new Vector4(simd_pq.X == 0f ? 1 : c.X, simd_pq.Y == 0f ? 1 : c.Y, simd_pq.Z == 0f ? 1 : c.Z, simd_pq.W == 0f ? 1 : c.W);
+            s_result = new Vector4(simd_pq.X == 0f ? 0 : s.X, simd_pq.Y == 0f ? 0 : s.Y, simd_pq.Z == 0f ? 0 : s.Z, simd_pq.W == 0f ? 0 : s.W);
 
-            var c_true = Sse.And(pq_cmp, ones);
-            var c_false = Sse.AndNot(pq_cmp, c);
-            c_result = Sse.Or(c_true, c_false);
-
-            var s_true = Sse.And(pq_cmp, zeros);
-            var s_false = Sse.AndNot(pq_cmp, s);
-            s_result = Sse.Or(s_true, s_false);
-
-            c_result = Sse.Shuffle(c_result, c_result, 27);
-            s_result = Sse.Shuffle(s_result, s_result, 27);
-
-            log?.WriteLine($"c_result:{c_result.GetElement(0):G9},{c_result.GetElement(1):G9},{c_result.GetElement(2):G9},{c_result.GetElement(3):G9}");
-            log?.WriteLine($"s_result:{s_result.GetElement(0):G9},{s_result.GetElement(1):G9},{s_result.GetElement(2):G9},{s_result.GetElement(3):G9}");
+            log?.WriteLine($"c_result:{c_result.X:G9},{c_result.Y:G9},{c_result.Z:G9},{c_result.W:G9}");
+            log?.WriteLine($"s_result:{s_result.X:G9},{s_result.Y:G9},{s_result.Z:G9},{s_result.W:G9}");
         }
-
-        //private static Vector128<float> Vec4MulM4x4(Vector128<float> a, Mat4x4 B)
-        //{
-        //    //_ = Sse.Shuffle(a, a, 0x00);
-
-        //    //var result = Sse.Multiply(Sse.Shuffle(a, a, 0x00), B.row[0]);
-        //    //result = Sse.Add(result, Sse.Multiply(Sse.Shuffle(a, a, 0x55), B.row[1]));
-        //    //result = Sse.Add(result, Sse.Multiply(Sse.Shuffle(a, a, 0xaa), B.row[2]));
-        //    //result = Sse.Add(result, Sse.Multiply(Sse.Shuffle(a, a, 0xff), B.row[3]));
-        //    //return result;
-
-        //    return Vector4.Transform(a.AsVector4(), B.AsMat4x4()).AsVector128();
-        //}
 
         private static byte MM_Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
             return ((byte)(((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0))));
         }
-
-        //private Vector3 QefSolve(Mat4x4 ata, Vector4 atb, Vector4 pointaccum)
-        //{
-        //    var masspoint = new Vector3(pointaccum.X, pointaccum.Y, pointaccum.Z) / pointaccum.W;
-
-        //    atb -= VmulSym(ata, masspoint);
-        //    var x = SolveAtaAtb(ata, atb);
-
-        //    return new Vector3(x.X, x.Y, x.Z) + masspoint;
-        //}
-
-        //private Vector4 SolveAtaAtb(Mat4x4 ata, Vector4 atb)
-        //{
-        //    var V = new Mat3(1.0f);
-        //    Vector3 sigma = SolveSym(ata, ref V);
-
-        //    // A = UEV^T; U = A / (E*V^T)
-        //    var Vinv = Pseudoinverse(sigma, V);
-
-        //    return Vector4.Transform(atb, Vinv);
-        //}
-
-        //private Mat4x4 Pseudoinverse(Vector3 sigma, Mat3 v)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //private Vector3 SolveSym(Mat4x4 a, ref Mat3 v)
-        //{
-        //    // assuming that A is symmetric: can optimize all operations for 
-        //    // the upper right triagonal
-        //    var vtav = a;
-
-        //    // assuming V is identity: you can also pass a matrix the rotations
-        //    // should be applied to
-        //    // U is not computed
-        //    for (int i = 0; i < 5; ++i)
-        //    {
-        //        Rotate(ref vtav, ref v, 0, 1);
-        //        Rotate(ref vtav, ref v, 0, 2);
-        //        Rotate(ref vtav, ref v, 1, 2);
-        //    }
-
-        //    return new Vector3(vtav.M11, vtav.M22, vtav.M33);
-        //}
-
-        //private void Rotate(ref Mat4x4 vtav, ref Mat3 v1, int v2, int v3)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //private Vector4 VmulSym(Mat4x4 a, Vector3 v)
-        //{
-        //    return new Vector4(
-        //        Vector3.Dot(new Vector3(a.M11, a.M12, a.M13), v),
-        //        a.M12 * v.X + a.M22 * v.Y + a.M23 * v.Z,
-        //        a.M13 * v.X + a.M23 * v.Y + a.M33 * v.Z,
-        //        0f);
-        //}
-
-        //private void QefAdd(Vector4 n, Vector4 p, ref Mat4x4 ata, ref Vector4 atb, ref Vector4 pointaccum)
-        //{
-        //    ata.M11 += n.X * n.X;
-        //    ata.M12 += n.X * n.Y;
-        //    ata.M13 += n.X * n.Z;
-        //    ata.M22 += n.Y * n.Y;
-        //    ata.M23 += n.Y * n.Z;
-        //    ata.M33 += n.Z * n.Z;
-
-        //    var b = Vector4.Dot(p, n);
-        //    atb += n * b;
-        //    pointaccum += p;
-        //}
-
-        //public static Vector3 CalculateCubeQEF(Vector3[] normals, Vector3[] positions, Vector3 meanPoint)
-        //{
-        //    var A = DenseMatrix.OfRowArrays(normals.Select(e => new[] { e.X, e.Y, e.Z }).ToArray());
-        //    var b = DenseVector.OfArray(normals.Zip(positions.Select(p => p - meanPoint), Vector3.Dot).ToArray());
-
-        //    var pseudo = A.PseudoInverse();
-        //    var leastsquares = pseudo.Multiply(b);
-
-        //    //return leastsquares + DenseVector.OfArray(new[] { meanPoint.X, meanPoint.Y, meanPoint.Z });
-
-        //    return new Vector3(leastsquares[0] + meanPoint.X, leastsquares[1] + meanPoint.Y, leastsquares[2] + meanPoint.Z);
-        //}
-
-        //private Vector3? DetectSharpFeature(MeshSimplificationOptions config, vec4[] p, vec4[] n, int count)
-        //{
-        //    var minimumAngle = 1.0f;
-        //    var sharpA = 0;
-        //    var sharpB = 0;
-
-        //    for (var j = 0; j < count - 1; j++)
-        //    {
-        //        for (var k = j + 1; k < count; k++)
-        //        {
-        //            var n0 = n[j];
-        //            var n1 = n[k];
-
-        //            var angle = Math.Abs(vec4.Dot(n0, n1));
-
-        //            if (angle < minimumAngle)
-        //            {
-        //                minimumAngle = angle;
-        //                sharpA = j;
-        //                sharpB = k;
-        //            }
-        //        }
-        //    }
-
-        //    float maxSharpAngle = 0;
-        //    if (minimumAngle < Math.Abs(config.MinAngleCosine))
-        //    {
-        //        var crossN = vec3.Cross(new vec3(n[sharpB]), new vec3(n[sharpA]));
-
-        //        for (var j = 0; j < count; j++)
-        //        {
-        //            var d = Math.Abs(vec3.Dot(n[j].xyz, crossN));
-        //            if (d > maxSharpAngle)
-        //            {
-        //                maxSharpAngle = d;
-        //            }
-        //        }
-
-        //        var corner = (maxSharpAngle < config.MinAngleCosine) ? false : true;
-        //        var junction = this.CalculateJunction(p, n, count, corner);
-        //        return junction;
-        //    }
-
-        //    return null;
-        //}
 
         private static void GenerateTriangles(VoxelInfo voxelInfo, ref MeshBuffer buffer)
         {
@@ -1086,11 +883,6 @@
                 }
             }
         }
-
-        //private static ivec4 DecodeVoxelUniqueID(uint id)
-        //{
-        //    return new ivec4((int)(id & 0x3ff), (int)((id >> 10) & 0x3ff), (int)((id >> 20) & 0x3ff), 0);
-        //}
 
         /// <summary>
         /// Solve least square solution using Ax = b
