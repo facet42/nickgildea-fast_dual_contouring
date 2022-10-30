@@ -6,8 +6,6 @@
 
     using ImGuiNET;
 
-    using MathNet.Numerics.LinearAlgebra.Single;
-
     //using MathNet.Numerics.LinearAlgebra;
     //using MathNet.Numerics.LinearAlgebra.Single;
 
@@ -19,73 +17,24 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
     using System.Numerics;
-    using System.Runtime.InteropServices;
     using System.Runtime.Intrinsics;
-    using System.Runtime.Intrinsics.X86;
     //using System.Text;
     //using System.Threading.Tasks;
 
     internal class FastDC
     {
-        const float scale = 32f;    // TODO: Move / remove this
-        const float Distance = 250f;
+        const float Scale = 8f;
+        const float Distance = 128f;
 
         private Log? log;
 
         private ProgramHandle shader;
 
         //private const int OctreeSize = 64;
-        private const int VoxelGridSize = 128;
-        private const float VoxelGridOffset = 64f;
+        private const int VoxelGridSize = 32;
+        private const float VoxelGridOffset = VoxelGridSize / 2;
         private readonly string logPath = "FastDC.log";
-        private static readonly vec4[] AxisOffset =
-        {
-            new vec4(1f, 0f, 0f, 0f),
-            new vec4(0f, 1f, 0f, 0f),
-            new vec4(0f, 0f, 1f, 0f)
-        };
-
-        private static readonly ivec4[][] EdgeNodeOffsets =
-        {
-            new[] { new ivec4(0), new ivec4(0, 0, 1, 0), new ivec4(0, 1, 0, 0), new ivec4(0, 1, 1, 0) },
-            new[] { new ivec4(0), new ivec4(1, 0, 0, 0), new ivec4(0, 0, 1, 0), new ivec4(1, 0, 1, 0) },
-            new[] { new ivec4(0), new ivec4(0, 1, 0, 0), new ivec4(1, 0, 0, 0), new ivec4(1, 1, 0, 0) },
-        };
-
-        private static readonly uint[] EncodedEdgeNodeOffsets =
-        {
-            0x00000000,
-            0x00100000,
-            0x00000400,
-            0x00100400,
-            0x00000000,
-            0x00000001,
-            0x00100000,
-            0x00100001,
-            0x00000000,
-            0x00000400,
-            0x00000001,
-            0x00000401,
-        };
-
-        private static readonly uint[] EncodedEdgeOffsets =
-        {
-            0x00000000,
-            0x00100000,
-            0x00000400,
-            0x00100400,
-            0x40000000,
-            0x40100000,
-            0x40000001,
-            0x40100001,
-            0x80000000,
-            0x80000400,
-            0x80000001,
-            0x80000401,
-        };
 
         private MeshSimplificationOptions options;
         private ViewerOptions viewerOpts;
@@ -103,6 +52,7 @@
             var fragmentSource = File.ReadAllText("voxel.frag");
             this.shader = Graphics.CreateProgram("FastDC", vertexSource, fragmentSource);
 
+            this.viewerOpts.UseCms = true;
             this.viewerOpts.MeshScale = 3.5f;
             this.options.MaxEdgeSize = 2.5f;
 
@@ -114,7 +64,7 @@
 
         private void InitialiseMeshes()
         {
-            this.meshBuffer = GenerateMesh(primConfig);
+            this.meshBuffer = DualContour.GenerateMesh(primConfig, VoxelGridSize, log);
             var mesh = CreateGLMesh(this.meshBuffer, viewerOpts.MeshScale, options);
 
             this.Meshes.Clear();
@@ -154,22 +104,6 @@
         //    Debug.WriteLine("MeshSimplifier called.");
         //}
 
-        private MeshBuffer GenerateMesh(SuperPrimitiveConfig config)
-        {
-            var voxelInfo = FindActiveVoxels(config);
-
-            var buffer = new MeshBuffer();
-
-            GenerateVertexData(voxelInfo, ref buffer);
-            GenerateTriangles(voxelInfo, ref buffer);
-
-            this.Dump(config, viewerOpts, voxelInfo, buffer);
-
-            Console.WriteLine($"Mesh: {buffer.NumVertices} {buffer.NumTriangles}");
-
-            return buffer;
-        }
-
         private void Dump(SuperPrimitiveConfig config, ViewerOptions viewer, VoxelInfo voxelInfo, MeshBuffer buffer)
         {
             if (this.log == null)
@@ -181,28 +115,28 @@
 
             this.log.WriteLine($"Scale:{viewer.MeshScale}");
 
-            this.log.WriteLine("Voxels\n======");
+            this.log.WriteLine($"Voxels{Environment.NewLine}======");
 
             foreach (var voxel in voxelInfo.Voxels)
             {
                 this.log.WriteLine(voxel.ToString());
             }
 
-            this.log.WriteLine("Edges\n=====");
+            this.log.WriteLine($"Edges{Environment.NewLine}=====");
 
             foreach (var edge in voxelInfo.Edges)
             {
                 this.log.WriteLine($"{edge.Key} P:{edge.Value.Position.ToString(",", "G9")} N:{edge.Value.Normal.ToString(",", "G9")} W:{edge.Value.Winding.ToString().ToLowerInvariant()}");
             }
 
-            this.log.WriteLine("Indices\n=======");
+            this.log.WriteLine($"Indices{Environment.NewLine}=======");
 
             foreach (var index in voxelInfo.Indices)
             {
                 this.log.WriteLine($"{index.Key},{index.Value}");
             }
 
-            this.log.WriteLine("Vertices\n========");
+            this.log.WriteLine($"Vertices{Environment.NewLine}========");
 
             foreach (var vertex in buffer.Vertices)
             {
@@ -210,60 +144,13 @@
                 this.log.WriteLine($"{vertex.Normal.x:G9},{vertex.Normal.y:G9},{vertex.Normal.z:G9}");
             }
 
-            this.log.WriteLine("Triangles\n=========");
+            this.log.WriteLine($"Triangles{Environment.NewLine}=========");
 
             for (int i = 0; i < buffer.NumTriangles; i++)
             {
                 log.WriteLine($"{buffer.Triangles[i].V0}");
                 log.WriteLine($"{buffer.Triangles[i].V1}");
                 log.WriteLine($"{buffer.Triangles[i].V2}");
-            }
-        }
-
-        private void GenerateVertexData(VoxelInfo info, ref MeshBuffer buffer)
-        {
-            log?.WriteLine("GenerateVertexData\n==================");
-            log?.WriteLine(info.Voxels.Count.ToString());
-
-            var idxCounter = 0;
-            foreach (var voxelId in info.Voxels)
-            {
-                log?.WriteLine($"VID:{voxelId}");
-
-                var p = new vec4[12];
-                var n = new vec4[12];
-
-                var idx = 0;
-                for (int i = 0; i < 12; i++)
-                {
-                    var edgeId = voxelId + EncodedEdgeOffsets[i];
-                    log?.WriteLine($"EID:{edgeId}");
-
-                    if (info.Edges.ContainsKey(edgeId) == true)
-                    {
-                        p[idx] = info.Edges[edgeId].Position;
-                        n[idx] = info.Edges[edgeId].Normal;
-                        idx++;
-
-                        log?.WriteLine($"P:{p[idx].x:G9},{p[idx].y:G9},{p[idx].z:G9},{p[idx].w:G9}");
-                        log?.WriteLine($"N:{n[idx].x:G9},{n[idx].y:G9},{n[idx].z:G9},{n[idx].w:G9}");
-                    }
-                }
-
-                var error = Qef.SolveFromPoints4d(p, n, idx, out var nodePos);
-                var nodeNormal = vec3.Zero;
-                for (int i = 0; i < idx; i++)
-                {
-                    nodeNormal += n[i].xyz;
-                }
-                nodeNormal *= (1f / (float)idx);
-
-                log?.WriteLine($"NP:{nodePos.x:G9},{nodePos.y:G9},{nodePos.z:G9}");
-                log?.WriteLine($"NN:{nodeNormal.x:G9},{nodeNormal.y:G9},{nodeNormal.z:G9}");
-
-                info.Indices.Add(voxelId, idxCounter++);
-
-                buffer.Vertices.Add(new MeshVertex() { Position = nodePos, Normal = nodeNormal });
             }
         }
 
@@ -334,201 +221,9 @@
             return $"{v.GetElement(0):#0.000000000},{v.GetElement(1):#0.000000000},{v.GetElement(2):#0.000000000},{v.GetElement(3):#0.000000000}";
         }
 
-        public static float Item(Mat4x4 m, int row, int column)
-        {
-            return m[row, column];
-            //switch (row)
-            //{
-            //    case 0:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                return m.M11;
-            //            case 1:
-            //                return m.M12;
-            //            case 2:
-            //                return m.M13;
-            //            case 3:
-            //                return m.M14;
-            //        }
-            //        break;
-
-            //    case 1:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                return m.M21;
-            //            case 1:
-            //                return m.M22;
-            //            case 2:
-            //                return m.M23;
-            //            case 3:
-            //                return m.M24;
-            //        }
-            //        break;
-
-            //    case 2:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                return m.M31;
-            //            case 1:
-            //                return m.M32;
-            //            case 2:
-            //                return m.M33;
-            //            case 3:
-            //                return m.M34;
-            //        }
-            //        break;
-
-            //    case 3:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                return m.M41;
-            //            case 1:
-            //                return m.M42;
-            //            case 2:
-            //                return m.M43;
-            //            case 3:
-            //                return m.M44;
-            //        }
-            //        break;
-            //}
-
-            //throw new IndexOutOfRangeException();
-        }
-
-        public static void Item(ref Mat4x4 m, int row, int column, float value)
-        {
-            m[row, column] = value;
-
-            //switch (row)
-            //{
-            //    case 0:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                m.M11 = value;
-            //                return;
-            //            case 1:
-            //                m.M12 = value;
-            //                return;
-            //            case 2:
-            //                m.M13 = value;
-            //                return;
-            //            case 3:
-            //                m.M14 = value;
-            //                return;
-            //        }
-            //        break;
-
-            //    case 1:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                m.M21 = value;
-            //                return;
-            //            case 1:
-            //                m.M22 = value;
-            //                return;
-            //            case 2:
-            //                m.M23 = value;
-            //                return;
-            //            case 3:
-            //                m.M24 = value;
-            //                return;
-            //        }
-            //        break;
-
-            //    case 2:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                m.M31 = value;
-            //                return;
-            //            case 1:
-            //                m.M32 = value;
-            //                return;
-            //            case 2:
-            //                m.M33 = value;
-            //                return;
-            //            case 3:
-            //                m.M34 = value;
-            //                return;
-            //        }
-            //        break;
-
-            //    case 3:
-            //        switch (column)
-            //        {
-            //            case 0:
-            //                m.M41 = value;
-            //                return;
-            //            case 1:
-            //                m.M42 = value;
-            //                return;
-            //            case 2:
-            //                m.M43 = value;
-            //                return;
-            //            case 3:
-            //                m.M44 = value;
-            //                return;
-            //        }
-            //        break;
-            //}
-
-            //throw new IndexOutOfRangeException();
-        }
-
         private static byte MM_Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
             return ((byte)(((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0))));
-        }
-
-        private static void GenerateTriangles(VoxelInfo voxelInfo, ref MeshBuffer buffer)
-        {
-            foreach (var pair in voxelInfo.Edges)
-            {
-                var edge = pair.Key;
-                var info = pair.Value;
-
-                //var basePos = DecodeVoxelUniqueID(edge);
-                var axis = (edge >> 30) & 0xff;
-
-                var nodeId = edge & ~0xc0000000;
-                var voxelIds = new[]
-                {
-                    nodeId - EncodedEdgeNodeOffsets[axis * 4 + 0],
-                    nodeId - EncodedEdgeNodeOffsets[axis * 4 + 1],
-                    nodeId - EncodedEdgeNodeOffsets[axis * 4 + 2],
-                    nodeId - EncodedEdgeNodeOffsets[axis * 4 + 3],
-                };
-
-                var edgeVoxels = new int[4];
-                var numFoundVoxels = 0;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    edgeVoxels[numFoundVoxels++] = voxelInfo.Indices[voxelIds[i]];
-                }
-
-                if (numFoundVoxels < 4)
-                {
-                    continue;
-                }
-
-                if (info.Winding == true)
-                {
-                    buffer.Triangles.Add(new MeshTriangle() { V0 = edgeVoxels[0], V1 = edgeVoxels[1], V2 = edgeVoxels[3] });
-                    buffer.Triangles.Add(new MeshTriangle() { V0 = edgeVoxels[0], V1 = edgeVoxels[3], V2 = edgeVoxels[2] });
-                }
-                else
-                {
-                    buffer.Triangles.Add(new MeshTriangle() { V0 = edgeVoxels[0], V1 = edgeVoxels[3], V2 = edgeVoxels[1] });
-                    buffer.Triangles.Add(new MeshTriangle() { V0 = edgeVoxels[0], V1 = edgeVoxels[2], V2 = edgeVoxels[3] });
-                }
-            }
         }
 
         /// <summary>
@@ -566,90 +261,6 @@
         //    return new Vector3((float)x[0], (float)x[1], (float)x[2]);
         //}
 
-        private VoxelInfo FindActiveVoxels(SuperPrimitiveConfig config, bool enableLog = false)
-        {
-            var info = new VoxelInfo();
-
-            for (int x = 0; x < VoxelGridSize; x++)
-            {
-                for (int y = 0; y < VoxelGridSize; y++)
-                {
-                    for (int z = 0; z < VoxelGridSize; z++)
-                    {
-                        var idxPos = new ivec4(x, y, z, 0);
-                        var p = new vec4(x - VoxelGridOffset, y - VoxelGridOffset, z - VoxelGridOffset, 1f);
-
-                        for (uint axis = 0; axis < 3; axis++)
-                        {
-                            var q = p + AxisOffset[axis];
-
-                            var pDensity = Density(config, p);
-                            var qDensity = Density(config, q);
-
-                            var zeroCrossing = pDensity >= 0f && qDensity < 0f || pDensity < 0f && qDensity >= 0f;
-
-                            if (zeroCrossing == false)
-                            {
-                                continue;
-                            }
-
-                            var t = FindIntersection(config, p, q);
-                            var pos = new vec4(glm.Mix(new vec3(p), new vec3(q), new vec3(t)), 1f);
-
-                            if (enableLog == true && log != null)
-                                log.WriteLine($"P:{pDensity:G9} Q:{qDensity:G9} T:{t:G9} POS:{pos.x:G9},{pos.y:G9},{pos.z:G9},{pos.w:G9}");
-
-                            const float H = 0.001f;
-                            var d0 = Density(config, pos + new vec4(H, 0f, 0f, 0f));
-                            var d1 = Density(config, pos - new vec4(H, 0f, 0f, 0f));
-
-                            var d2 = Density(config, pos + new vec4(0f, H, 0f, 0f));
-                            var d3 = Density(config, pos - new vec4(0f, H, 0f, 0f));
-
-                            var d4 = Density(config, pos + new vec4(0f, 0f, H, 0f));
-                            var d5 = Density(config, pos - new vec4(0f, 0f, H, 0f));
-
-                            if (enableLog == true && log != null)
-                                log.WriteLine($"{d0.ToString("G9").ToLowerInvariant()},{d1.ToString("G9").ToLowerInvariant()},{d2.ToString("G9").ToLowerInvariant()},{d3.ToString("G9").ToLowerInvariant()},{d4.ToString("G9").ToLowerInvariant()},{d5.ToString("G9").ToLowerInvariant()}");
-
-                            var n = new vec4(d0 - d1, d2 - d3, d4 - d5, 0f);
-                            var l = (1f / (float)Math.Sqrt(vec4.Dot(n, n)));
-                            var normal = n * l;
-
-                            if (enableLog == true && log != null)
-                            {
-                                log.WriteLine($"L:{n.Length:g9}");
-                                log.WriteLine($"N:{n.x:g9},{n.y:g9},{n.z:g9},{n.w:g9}");
-                                log.WriteLine($"N:{normal.x:g9},{normal.y:g9},{normal.z:g9},{normal.w:g9}");
-                            }
-
-                            var edgeInfo = new EdgeInfo() { Position = pos, Normal = normal, Winding = pDensity >= 0f };
-
-                            var code = EncodeAxisUniqueID(axis, x, y, z);
-                            info.Edges.Add(code, edgeInfo);
-
-                            if (enableLog == true && log != null)
-                                log.WriteLine($"Edge:{code}");
-
-                            var edgeNodes = EdgeNodeOffsets[axis];
-
-                            for (int i = 0; i < 4; i++)
-                            {
-                                var nodeIdxPos = idxPos - edgeNodes[i];
-                                var nodeID = EncodeVoxelUniqueID(nodeIdxPos);
-                                info.Voxels.Add(nodeID);
-
-                                if (enableLog == true && log != null)
-                                    log.WriteLine($"Node:{nodeID}");
-                            }
-                        }
-                    }
-                }
-            }
-
-            return info;
-        }
-
         //private float FindIntersection(float d0, float d1)
         //{
         //    var t = -d0 / (d1 - d0);
@@ -657,71 +268,10 @@
         //    return t;
         //}
 
-        private uint EncodeVoxelUniqueID(ivec4 idxPos, bool logEnabled = false)
-        {
-            //unchecked
-            {
-                var i = idxPos.x | (idxPos.y << 10) | (idxPos.z << 20);
-
-                if (logEnabled == true && log != null)
-                    log.WriteLine($"{idxPos.x},{idxPos.y},{idxPos.z},{idxPos.w} -> {i}");
-
-                return (uint)i;
-            }
-        }
-
-        private static uint EncodeAxisUniqueID(uint axis, int x, int y, int z)
-        {
-            return (uint)x | ((uint)y << 10) | ((uint)z << 20) | (axis << 30);
-        }
-
-        private static float FindIntersection(SuperPrimitiveConfig config, vec4 p0, vec4 p1)
-        {
-            const int FindEdgeInfoSteps = 16;
-            const float FindEdgeInfoIncrement = 1f / FindEdgeInfoSteps;
-
-            var minValue = float.MaxValue;
-            var currentT = 0f;
-            var t = 0f;
-
-            for (int i = 0; i < FindEdgeInfoSteps; i++)
-            {
-                var p = glm.Mix(p0, p1, new vec4(currentT));
-                var d = glm.Abs(Density(config, p));
-                if (d < minValue)
-                {
-                    t = currentT;
-                    minValue = d;
-                }
-
-                currentT += FindEdgeInfoIncrement;
-            }
-
-            return t;
-        }
-
-        private static float Density(SuperPrimitiveConfig config, vec4 p)
-        {
-            return SuperPrimitive(new vec3(p) / scale, new vec4(config.S), new vec2(config.R)) * scale;
-        }
-
-        // The "super primitve" -- use the parameters to configure different shapes from a single function
-        // see https://www.shadertoy.com/view/MsVGWG
-
-        static float SuperPrimitive(vec3 p, vec4 s, vec2 r)
-        {
-            var d = glm.Abs(p) - new vec3(s);
-
-            float q = glm.Length(new vec2(glm.Max(d.x + r.x, 0f), glm.Max(d.y + r.x, 0f)));
-            q += glm.Min(-r.x, glm.Max(d.x, d.y));
-            q = (glm.Abs((q + s.w)) - s.w);
-
-            return glm.Length(new vec2(glm.Max(q + r.y, 0f), glm.Max(d.z + r.y, 0f))) + glm.Min(-r.y, glm.Max(q, d.z));
-        }
-
         private static SuperPrimitiveConfig ConfigForShape(Primitive primitive)
         {
             var config = new SuperPrimitiveConfig();
+            config.Scale = Scale;
 
             switch (primitive)
             {
@@ -786,124 +336,6 @@
             //TestFrame(this.Meshes[0]);
             DrawFrame(this.shader, this.Meshes, position, -dir, viewerOpts.DrawWireframe, viewerOpts.MeshScale);
         }
-
-        //struct rubbish
-        //{
-        //    public float x;
-        //    public float y;
-        //    public float z;
-
-        //    public rubbish(float x, float y, float z)
-        //    {
-        //        this.x = x;
-        //        this.y = y;
-        //        this.z = z;
-        //    }
-        //}
-
-        //float[] g_vertex_buffer_data = new[]
-        //    {
-        //       -1.0f, -1.0f, 0.0f,
-        //       0f, 0f, -1f,
-        //       1f, 0f, 0f,
-        //       1.0f, -1.0f, 0.0f,
-        //       0f, 0f, -1f,
-        //       0f, 1f, 0f,
-        //       0.0f,  1.0f, 0.0f,
-        //       0f, 0f, -1f,
-        //       0f, 0f, 1f
-        //    };
-
-        //uint[] indices = new uint[]
-        //{
-        //    0, 1, 2
-        //};
-
-        //private void TestFrame(Mesh mesh)
-        //{
-        //    var VertexArrayID = GL.GenVertexArray();
-        //    GL.BindVertexArray(VertexArrayID);
-
-        //    // Generate 1 buffer, put the resulting identifier in vertexbuffer
-        //    var vertexbuffer = GL.GenBuffer();
-        //    // The following commands will talk about our 'vertexbuffer' buffer
-        //    GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
-        //    // Give our vertices to OpenGL.
-        //    //GL.BufferData(BufferTargetARB.ArrayBuffer, g_vertex_buffer_data, BufferUsageARB.StaticDraw);
-        //    GL.BufferData(BufferTargetARB.ArrayBuffer, meshBuffer.Vertices.ToArray(), BufferUsageARB.StaticDraw);
-
-        //    // 1st attribute buffer : vertices
-        //    GL.EnableVertexAttribArray(0);
-        //    GL.EnableVertexAttribArray(1);
-        //    GL.EnableVertexAttribArray(2);
-
-        //    GL.BindBuffer(BufferTargetARB.ArrayBuffer, vertexbuffer);
-        //    //GL.BindBuffer(BufferTargetARB.ArrayBuffer, mesh.VertexBuffer);
-
-        //    GL.VertexAttribPointer(
-        //       0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-        //       3,                  // size
-        //       VertexAttribPointerType.Float,           // type
-        //       false,           // normalized?
-        //       36,                  // stride
-        //       0            // array buffer offset
-        //    );
-
-        //    GL.VertexAttribPointer(
-        //       1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-        //       3,                  // size
-        //       VertexAttribPointerType.Float,           // type
-        //       false,           // normalized?
-        //       36,                  // stride
-        //       12            // array buffer offset
-        //    );
-
-        //    GL.VertexAttribPointer(
-        //       2,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-        //       3,                  // size
-        //       VertexAttribPointerType.Float,           // type
-        //       false,           // normalized?
-        //       36,                  // stride
-        //       24            // array buffer offset
-        //    );
-
-        //    var elementBuffer = GL.GenBuffer();
-        //    GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, elementBuffer);
-        //    GL.BufferData(BufferTargetARB.ElementArrayBuffer, indices, BufferUsageARB.StaticDraw);
-
-        //    var projection = mat4.Perspective(glm.Radians(45f), 1920f / 1080f, 0.1f, 500f);
-        //    var view = mat4.LookAt(new vec3(4, 3, 3), vec3.Zero, vec3.UnitY);
-        //    var model = mat4.Identity;
-        //    var mvp = projection * view * model;
-
-        //    GL.UseProgram(this.shader);
-
-        //    var mat = GL.GetUniformLocation(this.shader, "MVP");
-        //    CheckGLError();
-
-        //    var m4 = new OpenTK.Mathematics.Matrix4(mvp.m00, mvp.m01, mvp.m02, mvp.m03, mvp.m10, mvp.m11, mvp.m12, mvp.m13, mvp.m20, mvp.m21, mvp.m22, mvp.m23, mvp.m30, mvp.m31, mvp.m32, mvp.m33);
-        //    GL.UniformMatrix4f(mat, false, m4);
-        //    CheckGLError();
-
-        //    var useColour = GL.GetUniformLocation(this.shader, "useUniformColour");
-        //    CheckGLError();
-        //    GL.Uniform1i(useColour, 0);
-        //    CheckGLError();
-
-        //    //GL.BindVertexArray(mesh.VertexArrayObj);
-        //    //GL.DrawElements(PrimitiveType.Triangles, mesh.NumIndices, DrawElementsType.UnsignedInt, 0);
-
-        //    // Draw the triangle !
-        //    //GL.DrawArrays(PrimitiveType.Triangles, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-        //    GL.DrawElements(PrimitiveType.Triangles, indices.Length, DrawElementsType.UnsignedInt, 0);
-
-        //    GL.DisableVertexAttribArray(2);
-        //    GL.DisableVertexAttribArray(1);
-        //    GL.DisableVertexAttribArray(0);
-
-        //    GL.DeleteVertexArray(VertexArrayID);
-        //    GL.DeleteBuffer(elementBuffer);
-        //}
 
         private void DrawFrame(ProgramHandle shader, List<Mesh> meshes, vec3 position, vec3 forward, bool drawWireframe, float meshScale)
         {
@@ -1041,9 +473,16 @@
             if (ImGui.CollapsingHeader("Viewer Options"))
             {
                 ImGui.SliderFloat("Mesh Scale", ref viewerOpts.MeshScale, 1f, 5f, "%.3f", ImGuiSliderFlags.Logarithmic/*1.2f*/);
+
                 if (ImGui.RadioButton("Draw Wireframe", viewerOpts.DrawWireframe))
                 {
                     viewerOpts.DrawWireframe = !viewerOpts.DrawWireframe;
+                }
+
+                if (ImGui.RadioButton("Use CMS", viewerOpts.UseCms))
+                {
+                    viewerOpts.UseCms = !viewerOpts.UseCms;
+                    viewerOpts.RefreshModel = true;
                 }
             }
 
