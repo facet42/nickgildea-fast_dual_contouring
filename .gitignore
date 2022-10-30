@@ -469,3 +469,4 @@ FodyWeavers.xsd
 /demo/.vs/fast_dc/v17/Preview/Browse.VC.db-wal
 /FastDC/obj/Release/net6.0/FastDC.csproj.AssemblyReference.cache
 /demo/.vs/fast_dc/DesignTimeBuild/.dtbcache.v2
+/FastDC/obj/Release/net6.0/FastDC.csproj.CoreCompileInputs.cache
